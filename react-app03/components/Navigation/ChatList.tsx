@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Chat } from "@/types/chat";
-import { PiChatBold } from "react-icons/pi";
+import ChatItem from "./ChatItem";
 import { groupByDate } from "@/common/util";
 
 export default function ChatList() {
@@ -37,34 +37,21 @@ export default function ChatList() {
       {groupList.map(([date, chatList]) => {
         return (
           <div key={date}>
-            <div className = "sticky top-0 z-10 p-3 text-sm bg-gray-900 text-gray">
-                {date}
+            <div className="sticky top-0 z-10 p-3 text-sm bg-gray-900 text-gray">
+              {date}
             </div>
             <ul>
               {chatList.map((chat) => {
                 const isSelected = selectedChat?.id === chat.id;
                 return (
-                  <li
+                  <ChatItem
                     key={chat.id}
-                    className={`flex items-center p-3 hover:bg-gray-800 rounded space-x-3 cursor-pointer
-                                    ${isSelected ? "bg-gray-800" : ""}`}
-                    onClick={() => setSelectedChat(chat)}
-                  >
-                    <div>
-                      <PiChatBold />
-                    </div>
-                    <div className="relative flex-1 whitespace-nowrap overflow-hidden">
-                      {chat.title}
-                      <span
-                        className={`absolute right-0 inset-y-0 w-8 from-gray-900 bg-gradient-to-l
-                                        ${
-                                          isSelected
-                                            ? "from-gray-800"
-                                            : "from-gray-900"
-                                        }`}
-                      ></span>
-                    </div>
-                  </li>
+                    chat={chat}
+                    isSelected={isSelected}
+                    onSelected={(chat) => {
+                      setSelectedChat(chat);
+                    }}
+                  />
                 );
               })}
             </ul>
