@@ -11,7 +11,7 @@ import { IconType } from "react-icons";
 //border border-gray-600 rounded px-3 py-1.5 hover:bg-gray-800 active:bg-gray-700 
 interface ButtonProps extends ComponentPropsWithoutRef<"button"> {
     icon?: IconType;
-    variant?: "default" | "outline" | "text";
+    variant?: "default" | "outline" | "text" | "primary";
 }
 
 export default function Button({
@@ -24,10 +24,13 @@ export default function Button({
     const defaultCLass = "text-black dark:text-gray-300 bg-gray-50 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-900";
     const outlineClass = "border border-gray-300 dark:border-gray-600 text-black dark:text-gray-300 bg-gray-50 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700";
     const textClass = "text-black dark:text-gray-300 bg-transparent hover:bg-gray-200 dark:hover:bg-gray-700";
+    const primaryClass = "bg-[#00B981] text-white hover:bg-[#059669] hover:text-white shadow-sm"
     const buttonCSSclass = variant === "default"
         ? defaultCLass
         : variant === "outline"
         ? outlineClass
+        : variant === "primary"
+        ? primaryClass
         : textClass;
     return (
         <button
