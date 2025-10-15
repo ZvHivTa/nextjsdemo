@@ -11,9 +11,10 @@ export default function Navigation() {
 
      // 侧边栏显示/隐藏逻辑
     const navClasses = `
-        flex flex-col dark relative h-full w-[260px] bg-gray-900 text-gray-300 p-2
-        fixed top-0 left-0 transition-transform transform z-40
-        ${displayNavigation ? "translate-x-0" : "-translate-x-full"}
+        flex flex-col dark relative h-full bg-gray-900 text-gray-300
+        top-0 left-0 transition-transform transform z-40
+        transition-all duration-300 ease-in-out
+        ${displayNavigation ? "translate-x-0 w-[260px] p-2" : "-translate-x-full w-[0px] overflow-hidden p-0"}
     `;
 
 
