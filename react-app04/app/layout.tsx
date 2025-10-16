@@ -5,6 +5,7 @@ import "./globals.css";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import AppSidebar from "@/components/app-sidebar";
 import AppContextProvider from "@/components/AppContext";
+import ChatWindow from "@/components/chatwindow/ChatWindow";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,23 +32,31 @@ export default function RootLayout({
       <html lang="en" suppressHydrationWarning>
         <head />
         <body>
-          
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              <SidebarProvider>
-                <AppContextProvider>
-                  <AppSidebar/>
-                  <main>
-                    {children}
-                  </main>
-                </AppContextProvider>
-              </SidebarProvider>
-            </ThemeProvider>
-          
+             <div className="flex h-screen overflow-hidden"> 
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+                disableTransitionOnChange
+              >
+                <SidebarProvider>
+                  <AppContextProvider>
+                  
+                      
+                      {/* 侧边栏：宽度固定或由 Sidebar 组件自己控制 */}
+                      <AppSidebar/> 
+                      
+                      {/* 主内容区：flex-1 让其占据剩余所有宽度 */}
+                      <main className="flex-1 overflow-y-auto"> 
+                          <ChatWindow/>
+                          {children}
+                      </main>
+                      
+                  
+                  </AppContextProvider>
+                </SidebarProvider>
+              </ThemeProvider>
+              </div>
         </body>
       </html>
     </>
