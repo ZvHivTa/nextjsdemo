@@ -2,7 +2,7 @@
 
 import { DropdownMenu, DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { SidebarMenuAction } from "@/components/ui/sidebar";
-import { DropdownMenuContent, DropdownMenuItem } from "./ui/dropdown-menu";
+import { DropdownMenuItem,DropdownMenuContent} from "@radix-ui/react-dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
 import { useState } from "react"; // 导入 useState
 
