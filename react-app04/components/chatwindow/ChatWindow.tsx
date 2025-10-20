@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { useAppContext } from "../AppContext";
 import { ActionType, Message } from "@/reducers/AppReducer";
-import WelcomeWindow from "../welcomeWindow/WelcomeWindow";
+import WelcomeCard from "../welcomeWindow/WelcomeCard";
 
 const welcomeMessage = [
   "我们先从哪里开始呢？",
@@ -23,6 +23,8 @@ export default function ChatWindow() {
   const [inputContent, setInputContent] = useState("");
   const MAX_ROWS = 8; // 设置最大行数，用于限制高度
   const [isLoading, setIsLoading] = useState(false); //消息加载状态
+
+  const currentId = state.currentConversationId;
 
   // 过滤出当前会话的消息 (state 中有 currentConversationId)
   const currentMessages = state.messages.filter(
@@ -139,25 +141,6 @@ export default function ChatWindow() {
     );
   }
 
-  const initialMessage = useMemo(() => {
-        const randomIndex = Math.floor(Math.random() * welcomeMessage.length);
-        return welcomeMessage[randomIndex];
-    }, []);
-  //欢迎界面展示
-  function WelcomeCardContent(){
-    return(
-      <div className="relative basis-auto flex-col shrink flex flex-col justify-end max-sm:grow max-sm:justify-center sm:min-h-[42svh]">
-        <div className="flex justify-center">
-                <div className="px-1 text-pretty whitespace-pre-wrap">
-                    <h1 className="justify-center">
-                      {initialMessage}
-                    </h1>
-                </div>
-        </div>
-      </div>
-    );
-  }
-
   // 使用 useEffect 在消息列表更新后执行滚动
   // useEffect(() => {
   //     // 检查 ref 是否存在
@@ -166,9 +149,8 @@ export default function ChatWindow() {
   //         messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
   //     }
   // }, [currentMessages]); // 依赖项是 currentMessages，当消息数量变化时触发
-
   return (
-    <div className="flex flex-1 flex-col h-full w-full bg-background">
+    <div key={currentId} className="flex flex-1 flex-col h-full w-full bg-background">
       {/* 1. 顶部栏 */}
       <CardHeader className="flex flex-row items-center justify-between border-b p-4">
         <CardTitle className="text-xl font-semibold">{currentTitle}</CardTitle>
@@ -178,7 +160,9 @@ export default function ChatWindow() {
       </CardHeader>
 
       {/* 2. 消息内容区 */}
-      {state.currentConversationId === "" ? WelcomeCardContent() : MessageCardContent()}
+      {state.currentConversationId === ""
+        ? <WelcomeCard/>
+        : <MessageCardContent/>}
 
       {/* 3. 底部输入区 */}
       <CardFooter className="flex-shrink-0 border-t p-4">

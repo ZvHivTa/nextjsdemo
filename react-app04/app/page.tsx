@@ -1,11 +1,8 @@
-import { ThemeModeToggle } from "@/components/appSidebar/themeModeToggle";
-import Image from "next/image";
+
+import WelcomeWindow from "@/components/welcomeWindow/WelcomeWindow";
 
 export default function Home() {
   return (
-    <>
-      
-    </>
-
+    <WelcomeWindow/>
   );
 }

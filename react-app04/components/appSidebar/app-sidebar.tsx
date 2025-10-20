@@ -21,7 +21,6 @@ import {
 } from "../ui/input-group";
 import { useAppContext } from "../AppContext";
 import { ActionType } from "@/reducers/AppReducer";
-import { Icon } from "next/dist/lib/metadata/types/metadata-types";
 import { IconMap } from "@/reducers/AppReducer";
 import { useRouter } from "next/navigation";
 

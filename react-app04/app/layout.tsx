@@ -48,7 +48,7 @@ export default function RootLayout({
                       
                       {/* 主内容区：flex-1 让其占据剩余所有宽度 */}
                       <main className="flex-1 overflow-y-auto"> 
-                          <ChatWindow/>
+                          
                           {children}
                       </main>
                       
