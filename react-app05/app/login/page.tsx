@@ -1,7 +1,7 @@
 import { GalleryVerticalEnd } from "lucide-react"
 
-import { LoginForm } from "@/components/login-form"
-import { ThemeModeToggle } from "@/components/thememode-toggle"
+import { LoginForm } from "@/components/login-page/login-form"
+import { ThemeModeToggle } from "@/components/theme-toggle/thememode-toggle"
 
 export default function LoginPage() {
   return (

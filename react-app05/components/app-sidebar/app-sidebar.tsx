@@ -27,7 +27,7 @@ import {
 
 import NavMain from "./nav-main"
 import  NavUser  from './nav-user'
-import { ThemeModeToggle } from "../thememode-toggle"
+import { ThemeModeToggle } from "@/components/theme-toggle/thememode-toggle"
 
 
 // This is sample data.
@@ -141,7 +141,11 @@ const data = {
   ],
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  typeOfRole: 'student' | 'staff' | string; 
+}
+
+export function AppSidebar({ typeOfRole, ...props }: AppSidebarProps) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -150,7 +154,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     </div>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMainStudent} />
+        <NavMain items={typeOfRole === "student" ? data.navMainStudent : data.navMainStaff} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />
