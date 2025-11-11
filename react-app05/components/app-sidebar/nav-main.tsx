@@ -17,21 +17,36 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from '@/components/ui/sidebar'
+import { useRouter } from "next/navigation";
+interface SubItem {
+    title: string;
+    url: string;
+}
 
-export default function NavMain({
-  items,
-}: {
-  items: {
-    title: string
-    url: string
-    icon?: LucideIcon
-    isActive?: boolean
-    items?: {
-      title: string
-      url: string
-    }[]
-  }[]
-}) {
+interface NavItem {
+    title: string;
+    url: string;
+    icon: React.ElementType; 
+    isActive: boolean;
+    items: SubItem[];
+}
+
+// NavMain 组件的 Props 接口
+interface NavMainProps {
+    items: NavItem[];
+    currentPath: string;
+    // 这是一个 dispatch 函数，用于通知 AppContext 更改路径
+    navigate: (newPath: string) => void; 
+}
+
+export default function NavMain({ items, currentPath, navigate }: NavMainProps) {
+   const router = useRouter();
+    
+    // 侧边栏子项点击处理器
+    const handleItemClick = (url: string) => {
+        navigate(url);
+        router.push(url);
+    }
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>

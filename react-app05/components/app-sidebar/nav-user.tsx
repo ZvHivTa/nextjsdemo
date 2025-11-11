@@ -30,15 +30,19 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 
-export default function NavUser({
-  user,
-}: {
-  user: {
-    name: string
-    email: string
-    avatar: string
-  }
-}) {
+interface UserData {
+    name: string;
+    email: string;
+    avatar:string;
+}
+
+// NavUser 组件的 Props 接口
+interface NavUserProps {
+    user: UserData;
+    onLogout: () => void; // 登出回调函数
+}
+
+export default function NavUser({ user, onLogout }: NavUserProps) {
   const { isMobile } = useSidebar()
 
   return (
@@ -82,7 +86,7 @@ export default function NavUser({
 
             <DropdownMenuSeparator />
             <DropdownMenuItem>
-              <LogOut />
+              <LogOut onClick={onLogout}/>
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

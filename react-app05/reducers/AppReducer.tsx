@@ -21,6 +21,7 @@ export type UserRole = "student" | "manager" | null;
 interface UserData {
   name: string;
   email: string;
+  avatar:string;
 }
 
 //操作类型
