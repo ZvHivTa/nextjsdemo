@@ -23,7 +23,7 @@ export function AppRouter({
     const { state } = useAppContext();
     const { role } = state;
 
-    // 💡 关键修复: 使用 useRef 存储最近一次成功的角色状态。
+    // 使用 useRef 存储最近一次成功的角色状态。
     // 这可以防止在组件重新渲染/重新挂载时，role 状态短暂丢失。
     const lastValidRole = useRef(role);
     if (role) {
@@ -41,7 +41,6 @@ export function AppRouter({
             currentPath.startsWith(MANAGER_PATH_PREFIX);
         
         // 2. 检查当前用户是否应该被重定向
-        
         // A. 用户未登录逻辑 (仅在没有稳定角色时执行)
         if (!currentStableRole) {
             // 如果用户未登录，但尝试访问受保护页面
@@ -85,6 +84,9 @@ export function AppRouter({
     }, [role, currentPath, router]); // 依赖项仍是 role (原始状态) 和 currentPath
 
     // 4. 布局包裹逻辑 (保持不变)
+    // 注意：这个逻辑块实际上没有包裹任何东西，
+    // 它只是根据路径决定是否返回 {children}。
+    // 真正的布局切换通常在 app/layout.tsx 或嵌套的 layout.tsx (如 student/layout.tsx) 中完成。
     const isDashboardLayout = currentPath.startsWith(STUDENT_PATH_PREFIX) || currentPath.startsWith(MANAGER_PATH_PREFIX);
     
     if (isDashboardLayout) {
