@@ -1,68 +1,100 @@
 "use client"
 
-import { useEffect } from "react";
-// 引入 Next.js 客户端路由钩子
-import { useRouter, usePathname } from "next/navigation";
-// 引入我们自己的全局状态 Context
+import { useEffect, useRef } from 'react'; // 引入 useRef
+import { usePathname, useRouter } from 'next/navigation';
 import { useAppContext } from "@/components/AppContext";
 
-// 定义不受保护的公共路径
-const PUBLIC_PATHS = ['/login']; 
-// 根路径 '/' 现在被视为受保护路径，除非它是一个专门的公共主页
+// 定义应用的公共路径和角色前缀
+const LOGIN_PATH = '/login';
+const ROOT_PATH = '/';
+const STUDENT_PATH_PREFIX = '/student';
+const MANAGER_PATH_PREFIX = '/manager';
 
 /**
- * AppRouter 组件：
- * 负责监听应用状态（认证和角色），并执行 Next.js 的客户端路由跳转。
+ * AppRouter：负责全局权限检查和 Context 状态与路由的同步。
  */
-export function AppRouter({ children }: { children: React.ReactNode }) {
-    const { state } = useAppContext();
+export function AppRouter({
+    children,
+}: {
+    children: React.ReactNode;
+}) {
     const router = useRouter();
     const currentPath = usePathname();
+    const { state } = useAppContext();
+    const { role } = state;
+
+    // 💡 关键修复: 使用 useRef 存储最近一次成功的角色状态。
+    // 这可以防止在组件重新渲染/重新挂载时，role 状态短暂丢失。
+    const lastValidRole = useRef(role);
+    if (role) {
+        lastValidRole.current = role;
+    }
+    const currentStableRole = lastValidRole.current;
+
 
     useEffect(() => {
-        const { role } = state;
+        // --- 核心权限和跳转逻辑 ---
         
-        // 任何不是 '/login' 的路径都被视为受保护路径。
-        // 因为 /login/page.tsx 会在 mount 时运行 AppRouter。
-        const isProtectedPath = !PUBLIC_PATHS.some(p => currentPath === p);
-
-        // --- 1. 权限检查：未登录用户处理 ---
-        if (!role) {
-            // 如果用户未登录，并且当前路径不是 /login，则重定向到 /login
-            if (currentPath !== '/login') {
-                console.log("[Auth] Not logged in, redirecting to /login.");
-                // 强制推到登录页，打破任何其他页面的循环
-                router.push('/login'); 
-            }
-            // 如果用户已在 /login，不做任何操作，让登录表单组件渲染
-            return;
-        }
-
-        // --- 2. 权限检查：角色不匹配重定向 (仅当已登录时执行) ---
-        if (role) {
-            let targetPath = null;
-            
-            // 确保认证用户不在登录页
-            if (currentPath === '/login') {
-                 targetPath = (role === 'student' ? '/student' : '/manager');
-            } 
-            // 检查角色是否与当前路由匹配
-            else if (role === 'student' && currentPath.startsWith('/manager')) {
-                 targetPath = '/student';
-            } else if (role === 'manager' && currentPath.startsWith('/student')) {
-                 targetPath = '/manager';
-            }
-            
-            if (targetPath && targetPath !== currentPath) {
-                console.log(`[Auth] Redirecting to authorized route: ${targetPath}.`);
-                router.push(targetPath);
+        // 1. 检查当前是否为受保护路径
+        const isProtectedPath = 
+            currentPath.startsWith(STUDENT_PATH_PREFIX) || 
+            currentPath.startsWith(MANAGER_PATH_PREFIX);
+        
+        // 2. 检查当前用户是否应该被重定向
+        
+        // A. 用户未登录逻辑 (仅在没有稳定角色时执行)
+        if (!currentStableRole) {
+            // 如果用户未登录，但尝试访问受保护页面
+            if (isProtectedPath) {
+                console.log("[AppRouter] 🛑 UNSTABLE STATE DETECTED! Forcing redirect to LOGIN.");
+                router.replace(LOGIN_PATH);
                 return;
             }
+            return; 
         }
+
+        // --- 以下逻辑只针对已认证用户 (currentStableRole != null) ---
+
+        // 3. 角色路径不匹配检查 (Role Mismatch Check)
+        const isStudentPath = currentPath.startsWith(STUDENT_PATH_PREFIX);
+        const isManagerPath = currentPath.startsWith(MANAGER_PATH_PREFIX);
+
+        // 使用 stable role 来判断正确的路径前缀
+        const expectedPathPrefix = currentStableRole === 'student' ? STUDENT_PATH_PREFIX : MANAGER_PATH_PREFIX;
         
-        // 3. 移除基于 state.path 的同步逻辑，所有导航由 login-form 或 sidebar 直接执行 router.push
+        const isValidPathForRole = 
+            (currentStableRole === 'student' && isStudentPath) || 
+            (currentStableRole === 'manager' && isManagerPath);
+            
+        const isPublicPath = currentPath === LOGIN_PATH || currentPath === ROOT_PATH;
 
-    }, [state.role, currentPath, router]); // 仅监听角色变化和当前路径
+        let redirectHomePath: string | null = null;
+        
+        // 如果当前路径不合法（角色不匹配或停留在公共路径）
+        if (!isValidPathForRole || isPublicPath) {
+            redirectHomePath = expectedPathPrefix;
+        }
 
-    return <>{children}</>;
+        // 执行跳转（如果需要）
+        if (redirectHomePath && currentPath !== redirectHomePath) {
+            // 确保只在目标路径不同时才跳转
+            console.log(`[AppRouter] Redirecting ${currentStableRole} from ${currentPath} to ${redirectHomePath}`);
+            router.replace(redirectHomePath);
+        }
+
+    }, [role, currentPath, router]); // 依赖项仍是 role (原始状态) 和 currentPath
+
+    // 4. 布局包裹逻辑 (保持不变)
+    const isDashboardLayout = currentPath.startsWith(STUDENT_PATH_PREFIX) || currentPath.startsWith(MANAGER_PATH_PREFIX);
+    
+    if (isDashboardLayout) {
+        return <>{children}</>;
+    }
+
+    // 非 Dashboard 页面 (Login/Root)
+    return (
+        <>
+            {children}
+        </>
+    );
 }

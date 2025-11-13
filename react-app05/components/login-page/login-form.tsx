@@ -23,12 +23,8 @@ import { ActionType, UserRole } from "@/reducers/AppReducer";
 const formSchema = z.object({
   login: z.union([
     z.string()
-      .length(6, "ID 必须是 6 位数字或 8 位数字。")
-      .regex(/^\d+$/, "ID 必须只包含数字。"), 
-      
-    z.string()
-      .length(8, "ID 必须是 6 位数字或 8 位数字。")
-      .regex(/^\d+$/, "ID 必须只包含数字。"),
+      .length(6, "ID must be 6 or 8 bits number.")
+      .regex(/^\d+$/, "ID must be a number."), 
   ]),
   password: z
     .string()
@@ -71,7 +67,7 @@ export function LoginForm({
         type: ActionType.LOGIN, 
         payload: { 
             role: userRole, 
-            user: { name: data.login, email: `${data.login}@school.edu` }, // 示例 UserData
+            user: { name: data.login, email: `${data.login}@school.edu`,avatar:"" }, // 示例 UserData
             redirectPath: redirectPath 
         } 
     });

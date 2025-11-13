@@ -37,13 +37,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          
             <AppContextProvider>
               <AppRouter>
                 {children}
                 </AppRouter>
             </AppContextProvider>
-          
         </ThemeProvider>
       </body>
     </html>

@@ -21,7 +21,7 @@ export default function StudentLayout({
     // ⚠️ 如果您要使用 AppSidebar，它依赖于 AppContext，所以它必须在 AppContextProvider 下。
     // 假设 SidebarProvider/Context 是 AppContext 外部的独立 UI 状态管理。
     <SidebarProvider>
-      <AppSidebar/> 
+            <AppSidebar/> 
       
       {/* 主要内容区域容器 */}
       <SidebarInset>

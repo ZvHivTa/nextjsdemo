@@ -21,7 +21,7 @@ export type UserRole = "student" | "manager" | null;
 interface UserData {
   name: string;
   email: string;
-  avatar:string;
+  avatar:string | null;
 }
 
 //操作类型
@@ -51,7 +51,11 @@ export type Action = LoginAction | LogoutAction | NavigateAction;
 //初始化状态
 export const initialState: State = {
   role: null,
-  user: null,
+  user: {
+  name: "newbee",
+  email: "newbee@ddj.eju.cn",
+  avatar: null,
+},
   path: "/",
 };
 

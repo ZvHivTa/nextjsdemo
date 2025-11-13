@@ -73,11 +73,11 @@ const data = {
       items: [
         {
           title: "Personal Info",
-          url: "#",
+          url: "/student/info",
         },
         {
           title: "Password Change",
-          url: "#",
+          url: "/student/PwdChange",
         },
       ],
     },
@@ -89,15 +89,15 @@ const data = {
       items: [
         {
           title: "Search Course",
-          url: "#",
+          url: "/student/search",
         },
         {
           title: "Recommended Course",
-          url: "#",
+          url: "/student/recommend",
         },
         {
           title: "Selected Course",
-          url: "#",
+          url: "/student/selected",
         },
       ],
     },
@@ -152,11 +152,8 @@ const data = {
   ] as NavItem[],
 }
 
-interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-  typeOfRole: 'student' | 'staff' | string; 
-}
 
-export function AppSidebar({ ...props }: AppSidebarProps) {
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
    // ✅ 1. 从 AppContext 中获取状态和 dispatch
     const { state, dispatch } = useAppContext();
     const { role, user, path } = state;
