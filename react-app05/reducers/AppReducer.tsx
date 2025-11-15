@@ -11,7 +11,7 @@ import {
 //数据类型
 export interface State {
   role: UserRole;
-  user: UserData | null;
+  user: UserData;
   path: string; // 模拟当前路由路径
   // isSidebarOpen: boolean; // 如果使用外部 sidebar context，可以省略
 }
@@ -22,6 +22,10 @@ interface UserData {
   name: string;
   email: string;
   avatar:string | null;
+  id: string;      //  <-- 添加
+  year: string;    // <-- 添加
+  major: string;   // <-- 添加
+  college: string; // <-- 添加
 }
 
 //操作类型
@@ -55,6 +59,11 @@ export const initialState: State = {
   name: "newbee",
   email: "newbee@ddj.eju.cn",
   avatar: null,
+  id:"",
+  year: "",   
+  major:  "", 
+  college:  "", 
+
 },
   path: "/",
 };
