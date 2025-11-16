@@ -8,7 +8,7 @@ import { useAppContext } from "@/components/AppContext";
 const LOGIN_PATH = '/login';
 const ROOT_PATH = '/';
 const STUDENT_PATH_PREFIX = '/student';
-const MANAGER_PATH_PREFIX = '/manager';
+const MANAGER_PATH_PREFIX = '/admin';
 
 /**
  * AppRouter：负责全局权限检查和 Context 状态与路由的同步。
@@ -63,7 +63,7 @@ export function AppRouter({
         
         const isValidPathForRole = 
             (currentStableRole === 'student' && isStudentPath) || 
-            (currentStableRole === 'manager' && isManagerPath);
+            (currentStableRole === 'admin' && isManagerPath);
             
         const isPublicPath = currentPath === LOGIN_PATH || currentPath === ROOT_PATH;
 

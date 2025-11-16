@@ -11,21 +11,30 @@ import {
 //数据类型
 export interface State {
   role: UserRole;
-  user: UserData;
+  user: StudentData | AdminData;
   path: string; // 模拟当前路由路径
   // isSidebarOpen: boolean; // 如果使用外部 sidebar context，可以省略
 }
 
-export type UserRole = "student" | "manager" | null;
+export type UserRole = "student" | "admin" | null;
 
-interface UserData {
+interface StudentData {
   name: string;
   email: string;
   avatar:string | null;
   id: string;      //  <-- 添加
   year: string;    // <-- 添加
-  major: string;   // <-- 添加
+  subject: string;   // <-- 添加
   college: string; // <-- 添加
+}
+
+interface AdminData{
+  name: string;
+  email: string;
+  avatar:string | null;
+  id: string;      
+  subject: string;   
+  college: string; 
 }
 
 //操作类型
@@ -38,7 +47,7 @@ export enum ActionType {
 //具体操作
 export interface LoginAction {
   type: ActionType.LOGIN;
-  payload: { role: UserRole; user: UserData; redirectPath: string };
+  payload: { role: UserRole; user: StudentData | AdminData; redirectPath: string };
 }
 
 export interface LogoutAction {
@@ -61,7 +70,7 @@ export const initialState: State = {
   avatar: null,
   id:"",
   year: "",   
-  major:  "", 
+  subject:  "", 
   college:  "", 
 
 },

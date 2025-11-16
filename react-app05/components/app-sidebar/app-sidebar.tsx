@@ -106,46 +106,46 @@ const data = {
   navMainStaff: [
     {
       title: "Personal",
-      url: "/manager",
+      url: "/admin",
       icon: Info,
       isActive: true,
       items: [
         {
           title: "Personal Info",
-          url: "#",
+          url: "/admin/info",
         },
         {
           title: "Password Change",
-          url: "#",
+          url: "/admin/PwdChange",
         },
       ],
     },
     {
       title: "Course",
-      url: "/manager",
+      url: "/admin",
       icon: BookOpen,
       isActive: true,
       items: [
         {
           title: "Search Course",
-          url: "#",
+          url: "/admin/courseSearch",
         },
         {
           title: "Create Course",
-          url: "#",
+          url: "/admin/courseCreate",
         },
       ],
     },
 
      {
       title: "Student",
-      url: "/manager",
+      url: "/admin",
       icon: User,
       isActive: true,
       items: [
         {
           title: "Management",
-          url: "#",
+          url: "/admin/studentManagement",
         }
       ],
     },

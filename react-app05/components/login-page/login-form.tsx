@@ -1,137 +1,170 @@
 "use client"
 
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
-import { Controller, useForm } from "react-hook-form";
-import { Input } from "@/components/ui/input";
-import * as z from "zod";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { z } from "zod"
+import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+import { useAppContext } from "@/components/AppContext"
+import { ActionType } from "@/reducers/AppReducer"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { Loader2 } from "lucide-react"
 
-// import { useRouter } from "next/navigation"; 
-
-// 导入 AppContext 和 Reducer 的类型/枚举
-import { useAppContext } from "@/components/AppContext";
-import { ActionType, UserRole } from "@/reducers/AppReducer";
-
-
+// --- 1. 修改 Schema ---
 const formSchema = z.object({
-  login: z.union([
-    z.string()
-      .length(6, "ID must be 6 or 8 bits number.")
-      .regex(/^\d+$/, "ID must be a number."), 
-  ]),
+  login: z.string()
+    // 使用正则：^ 表示开始，$ 表示结束
+    // \d{6} 表示6个数字，\d{8} 表示8个数字
+    // | 表示或者
+    .regex(/^(\d{6}|\d{8})$/, {
+      message: "ID必须是6位或8位数字 (ID must be a 6 or 8 digit number)",
+    }),
   password: z
     .string()
-    .min(8, "Password must be at least 8 characters.") 
-    .max(100, "Password must be at most 100 characters."),
+    .min(8, "密码至少需要8个字符")
+    .max(100, "密码不能超过100个字符"),
 })
-
-type LoginFormValues = z.infer<typeof formSchema>;
 
 export function LoginForm({
   className,
   ...props
-}: React.ComponentProps<"form">) {
-  // 使用 useAppContext 获取 dispatch
-  const { dispatch } = useAppContext(); 
-  
+}: React.ComponentPropsWithoutRef<"div">) {
+  const { dispatch } = useAppContext();
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       login: "",
       password: "",
     },
-  });
+  })
 
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    setLoading(true);
+    console.log("Login attempt:", values)
 
+    // 模拟网络请求延迟
+    setTimeout(() => {
+      // 简单的模拟认证逻辑
+      let role: "student" | "admin" = "student";
+      
+      // 如果 ID 是 6 位，假设是管理员 (示例逻辑)
+      if (values.login.length === 6) {
+        role = "admin";
+      } else {
+        role = "student";
+      }
 
-  // 完善 onSubmit 逻辑
-  const onSubmit = async (data: LoginFormValues) => {
-    // 1. 根据 ID 长度确定角色和跳转路径
-    const userRole: UserRole = data.login.length === 6 ? 'student' : 'manager';
-    const redirectPath = userRole === 'student' ? '/student' : '/manager';
+      // 构建用户数据 (模拟从后端返回)
+      const mockUser = {
+        name: role === 'student' ? "张三" : "李管理员",
+        email: `${values.login}@example.com`,
+        avatar: "/placeholder-user.jpg",
+        // 补充 reducer 中定义的字段
+        id: values.login,
+        year: "2025",
+        major: "计算机科学",
+        college: "信息学院"
+      };
 
-    console.log("正在执行登录请求...");
-
-    // 2. 模拟异步登录操作 (实际中应替换为 fetch 或 axios)
-    await new Promise(resolve => setTimeout(resolve, 800)); 
-    
-    // 3. 派发 LOGIN Action，更新全局状态
-    dispatch({ 
-        type: ActionType.LOGIN, 
-        payload: { 
-            role: userRole, 
-            user: { name: data.login, email: `${data.login}@school.edu`,avatar:"" }, // 示例 UserData
-            redirectPath: redirectPath 
-        } 
-    });
-
-    // 4. 用户反馈
-    alert(`登录成功! 身份: ${userRole === 'student' ? '学生' : '管理员/教师'}! 即将跳转到 ${redirectPath} 界面.`);
-  };
+      // 派发登录动作
+      dispatch({
+        type: ActionType.LOGIN,
+        payload: {
+          role: role,
+          user: mockUser,
+          redirectPath: role === 'student' ? '/student' : '/admin',
+        },
+      });
+      
+      
+      setLoading(false);
+    }, 1000);
+  }
 
   return (
-    <form className={cn("flex flex-col gap-6", className)}
-      onSubmit={form.handleSubmit(onSubmit)}
-      {...props}
-    >
-      <FieldGroup>
-
-        <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold">Login to your account</h1>
-          <p className="text-muted-foreground text-sm text-balance">
-            Enter your Student ID or Staff ID to login to your account
-          </p>
-        </div>
-
-        <Controller
-          name="login"
-          control={form.control}
-          render={({ field, fieldState }) => (
-            <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor="form-rhf-login">Your ID</FieldLabel>
-              <Input
-                {...field}
-                id="form-rhf-login"
-                aria-invalid={fieldState.invalid}
-                placeholder="your student ID or staff ID…"
-                autoComplete="off"
+    <div className={cn("flex flex-col gap-6", className)} {...props}>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">Welcome to Course Management System</CardTitle>
+          <CardDescription>
+            Login to your account
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-6">
+              
+              {/* Login Field */}
+              <FormField
+                control={form.control}
+                name="login"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>student or staff (ID)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="6 bits or 8 bits number" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              {fieldState.invalid && fieldState.error?.message && <FieldError errors={[fieldState.error]} />}
-            </Field>
-          )}
-        />
 
-        <Controller
-          name="password"
-          control={form.control}
-          render={({ field, fieldState }) => (
-            <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor="form-rhf-password">Password</FieldLabel>
-              <Input
-                {...field}
-                id="form-rhf-password"
-                aria-invalid={fieldState.invalid}
-                type="password"
-                placeholder="your password..."
-                autoComplete="off"
+              {/* Password Field */}
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center">
+                      <FormLabel>password</FormLabel>
+  
+                    </div>
+                    <FormControl>
+                      <Input type="password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              {fieldState.invalid && fieldState.error?.message && <FieldError errors={[fieldState.error]} />}
-            </Field>
-          )}
-        />
 
-        
-        <Field>
-          <Button type="submit">Login</Button>
-        </Field>
-      </FieldGroup>
-    </form>
-  );
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    登录中...
+                  </>
+                ) : (
+                  "登录"
+                )}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
+  )
 }

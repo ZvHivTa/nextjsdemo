@@ -9,10 +9,8 @@ import {
 } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
 
-/**
- * StudentLayout：为 /student/* 路径提供一致的侧边栏和布局结构。
- */
-export default function StudentLayout({
+
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -33,7 +31,7 @@ export default function StudentLayout({
               className="mr-2 data-[orientation=vertical]:h-4"
             />
             {/* 可以在这里添加面包屑导航或页面标题 */}
-            <h1 className="text-xl font-semibold">Student Dashboard</h1>
+            <h1 className="text-xl font-semibold">Admin Dashboard</h1>
           </div>
         </header>
         
