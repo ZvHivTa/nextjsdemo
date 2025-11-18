@@ -87,7 +87,7 @@ export function LoginForm({
         subject: "计算机科学",
         college: "信息学院"
       };
-
+      
       const mockAdmin = {
         name: "李管理员",
         email: `${values.login}@example.com`,
@@ -98,7 +98,15 @@ export function LoginForm({
         college: "信息学院"
 
       };
-
+      
+      // 登录成功，保存到 LocalStorage
+      if(role === "admin"){
+        localStorage.setItem('app_user', JSON.stringify(mockAdmin));
+      }else if(role === "student"){
+        localStorage.setItem('app_user', JSON.stringify(mockStudent));
+      }
+      
+      localStorage.setItem('app_role', role);
       // 派发登录动作
       dispatch({
         type: ActionType.LOGIN,

@@ -13,7 +13,7 @@ export interface State {
   role: UserRole;
   user: StudentData | AdminData;
   path: string; // 模拟当前路由路径
-  // isSidebarOpen: boolean; // 如果使用外部 sidebar context，可以省略
+  isInitialized: boolean; // 初始化标志
 }
 
 export type UserRole = "student" | "admin" | null;
@@ -21,20 +21,20 @@ export type UserRole = "student" | "admin" | null;
 interface StudentData {
   name: string;
   email: string;
-  avatar:string | null;
-  id: string;      //  <-- 添加
-  year: string;    // <-- 添加
-  subject: string;   // <-- 添加
+  avatar: string | null;
+  id: string; //  <-- 添加
+  year: string; // <-- 添加
+  subject: string; // <-- 添加
   college: string; // <-- 添加
 }
 
-interface AdminData{
+interface AdminData {
   name: string;
   email: string;
-  avatar:string | null;
-  id: string;      
-  subject: string;   
-  college: string; 
+  avatar: string | null;
+  id: string;
+  subject: string;
+  college: string;
 }
 
 //操作类型
@@ -42,12 +42,18 @@ export enum ActionType {
   LOGIN = "LOGIN",
   LOGOUT = "LOGOUT",
   NAVIGATE = "NAVIGATE",
+  RESTORE_SESSION = "RESTORE_SESSION", // 恢复会话
+  INITIALIZE_END = "INITIALIZE_END", // 初始化结束（即使没登录）
 }
 
 //具体操作
 export interface LoginAction {
   type: ActionType.LOGIN;
-  payload: { role: UserRole; user: StudentData | AdminData; redirectPath: string };
+  payload: {
+    role: UserRole;
+    user: StudentData | AdminData;
+    redirectPath: string;
+  };
 }
 
 export interface LogoutAction {
@@ -59,21 +65,35 @@ export interface NavigateAction {
   route: string;
 }
 
-export type Action = LoginAction | LogoutAction | NavigateAction;
+export interface RestoreSessionAction {
+  type: ActionType.RESTORE_SESSION;
+  payload: { role: UserRole; user: StudentData | AdminData; path: string };
+}
+
+export interface InitializeEndAction {
+  type: ActionType.INITIALIZE_END;
+}
+
+export type Action =
+  | LoginAction
+  | LogoutAction
+  | NavigateAction
+  | RestoreSessionAction
+  | InitializeEndAction;
 
 //初始化状态
 export const initialState: State = {
   role: null,
   user: {
-  name: "newbee",
-  email: "newbee@ddj.eju.cn",
-  avatar: null,
-  id:"",
-  year: "",   
-  subject:  "", 
-  college:  "", 
-
-},
+    name: "newbee",
+    email: "newbee@ddj.eju.cn",
+    avatar: null,
+    id: "",
+    year: "",
+    subject: "",
+    college: "",
+  },
+  isInitialized: false, // [默认] 未初始化
   path: "/",
 };
 
@@ -103,27 +123,37 @@ export function reducer(state: State, action: Action): State {
         ...state,
         role: action.payload.role,
         user: action.payload.user,
-        path: action.payload.redirectPath, // 登录时设置初始路径
+        path: action.payload.redirectPath,
+        isInitialized: true, // 登录必然意味着已初始化
       };
     case "LOGOUT":
       return {
-        ...initialState, // 重置所有状态
+        ...initialState, 
         path: "/",
+        isInitialized: true, // 登出后也是已初始化状态
       };
     case "NAVIGATE":
-      // 阻止对 # 的跳转
       if (action.route === "#") {
-        console.warn("Sidebar link '#' clicked. Navigation blocked.");
         return state;
       }
       return {
         ...state,
         path: action.route,
       };
+    case "RESTORE_SESSION":
+      return {
+        ...state,
+        role: action.payload.role,
+        user: action.payload.user,
+        path: action.payload.path,
+        isInitialized: true,
+      };
+    case "INITIALIZE_END":
+      return {
+        ...state,
+        isInitialized: true,
+      };
     default:
-      if (process.env.NODE_ENV !== 'production') {
-                console.error("Unknown action type:", (action as any).type);
-            }
       return state;
   }
 }
