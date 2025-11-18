@@ -14,7 +14,7 @@ import { ArrowUpDown, Sparkles } from "lucide-react"
 // 引入我们之前抽离的通用表格组件
 
 import { ColumnDef } from "@tanstack/react-table"
-import { CourseDataTable } from "@/components/app-dashborad/student-course-table"
+import { CourseDataTable } from "@/components/app-dashborad/course-table"
 
 // --- 1. 类型定义 ---
 type CourseType = '通识课程' | '专业必修课' | '专业选修课' | '共通教育课';
@@ -94,6 +94,11 @@ export default function RecommendPage() {
 
   // --- 6. 列定义 ---
   const columns = useMemo<ColumnDef<Course>[]>(() => [
+     {
+      accessorKey: "id",
+      header: "课程id",
+      id: "课程id",
+    },
     {
       accessorKey: "name",
       header: ({ column }) => (

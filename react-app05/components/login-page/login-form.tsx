@@ -76,15 +76,27 @@ export function LoginForm({
       }
 
       // 构建用户数据 (模拟从后端返回)
-      const mockUser = {
-        name: role === 'student' ? "张三" : "李管理员",
+      // TODO: 登录向后端发送请求
+      const mockStudent = {
+        name: "张三" ,
         email: `${values.login}@example.com`,
         avatar: "/placeholder-user.jpg",
         // 补充 reducer 中定义的字段
         id: values.login,
         year: "2025",
-        major: "计算机科学",
+        subject: "计算机科学",
         college: "信息学院"
+      };
+
+      const mockAdmin = {
+        name: "李管理员",
+        email: `${values.login}@example.com`,
+        avatar: "/placeholder-user.jpg",
+        // 补充 reducer 中定义的字段
+        id: values.login,
+        subject: "计算机科学",
+        college: "信息学院"
+
       };
 
       // 派发登录动作
@@ -92,7 +104,7 @@ export function LoginForm({
         type: ActionType.LOGIN,
         payload: {
           role: role,
-          user: mockUser,
+          user: role === 'student' ? mockStudent : mockAdmin,
           redirectPath: role === 'student' ? '/student' : '/admin',
         },
       });

@@ -145,7 +145,7 @@ const data = {
       items: [
         {
           title: "Management",
-          url: "/admin/studentManagement",
+          url: "/admin/students",
         }
       ],
     },

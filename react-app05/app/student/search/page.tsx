@@ -21,7 +21,7 @@ import { Search, ArrowUpDown } from "lucide-react"
 
 
 import { ColumnDef } from "@tanstack/react-table"
-import { CourseDataTable } from "@/components/app-dashborad/student-course-table"
+import { CourseDataTable } from "@/components/app-dashborad/course-table"
 
 // --- (数据类型定义 - 保持不变) ---
 type CourseType = '通识课程' | '专业必修课' | '专业选修课' | '共通教育课';
@@ -72,6 +72,7 @@ const MOCK_MY_COURSE_IDS = new Set<string>(['C003', 'C005']);
 export default function SearchPage() {
   // --- (筛选器状态 - 保持不变) ---
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedID, setSelectedID] = useState("all");
   const [selectedCollege, setSelectedCollege] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedYear, setSelectedYear] = useState("all");
@@ -84,6 +85,7 @@ export default function SearchPage() {
   // --- (runSearch 模拟 API - 保持不变) ---
   const runSearch = (
     currentQuery: string,
+    currentID:string,
     currentCollege: string,
     currentType: string,
     currentYear: string
@@ -101,8 +103,12 @@ export default function SearchPage() {
         const lowerQuery = currentQuery.toLowerCase();
         courses = courses.filter(course =>
           course.name.toLowerCase().includes(lowerQuery) ||
-          course.teacher.toLowerCase().includes(lowerQuery)
+          course.teacher.toLowerCase().includes(lowerQuery)||
+          course.id.includes(currentQuery)
         );
+      }
+      if (currentID !== "all") {
+        courses = courses.filter(course => course.id === currentID);
       }
       if (currentCollege !== "all") {
         courses = courses.filter(course => course.college === currentCollege);
@@ -121,13 +127,13 @@ export default function SearchPage() {
 
   // --- (搜索按钮处理器 - 保持不变) ---
   const handleSearchClick = () => {
-    runSearch(searchQuery, selectedCollege, selectedType, selectedYear);
+    runSearch(searchQuery,selectedID,  selectedCollege, selectedType, selectedYear);
   };
 
   // --- (useEffect 初始加载 - 保持不变) ---
   useEffect(() => {
     setMyCourseIds(MOCK_MY_COURSE_IDS);
-    runSearch("", "all", "all", "all");
+    runSearch("","all", "all", "all", "all");
   }, []); 
 
   // --- (选课/退选处理器 - 修改) ---
@@ -157,7 +163,11 @@ export default function SearchPage() {
 
   // --- (列定义 - 修改) ---
   const columns = useMemo<ColumnDef<Course>[]>(() => [
-    // ... (其他列定义: name, teacher, type, time/location, year, enrolled/capacity 保持不变) ...
+    {
+      accessorKey: "id",
+      header: "课程id",
+      id: "课程id",
+    },
     {
       accessorKey: "name",
       header: ({ column }) => (

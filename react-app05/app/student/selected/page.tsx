@@ -13,7 +13,7 @@ import { ArrowUpDown, BookCheck } from "lucide-react"
 
 
 import { ColumnDef } from "@tanstack/react-table"
-import { CourseDataTable } from "@/components/app-dashborad/student-course-table"
+import { CourseDataTable } from "@/components/app-dashborad/course-table"
 
 // --- 类型定义 ---
 // 这里我们可能需要多一个 credits (学分) 字段，已选课程通常关注学分
@@ -64,6 +64,11 @@ export default function SelectedPage() {
 
   // 定义列
   const columns = useMemo<ColumnDef<Course>[]>(() => [
+    {
+      accessorKey: "id",
+      header: "课程id",
+      id: "课程id",
+    },
     {
       accessorKey: "name",
       header: ({ column }) => (

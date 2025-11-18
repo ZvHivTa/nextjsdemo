@@ -14,21 +14,6 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { useAppContext } from "@/components/AppContext";
 
-// --- 模拟数据 ---
-// 在实际应用中，您应该从 AppContext 中获取这些数据
-// const { state } = useAppContext();
-// const student = state.user;
-// (您还需要更新 AppReducer.tsx 中的 UserData 类型以包含这些字段)
-const mockStudentData = {
-  id: "20250001",
-  name: "张三",
-  email: "zhangsan@example.com",
-  avatarUrl: "/placeholder-user.jpg", // 您可以放一个占位符图片在 public 目录下
-  year: "大三",
-  major: "计算机科学与技术",
-  college: "信息工程学院",
-};
-// ---------------
 
 export default function Page() {
   
@@ -55,7 +40,7 @@ export default function Page() {
       {/* 1. 卡片头部：包含头像、姓名和描述（如邮箱） */}
       <CardHeader className="flex flex-row items-center space-x-4">
         <Avatar className="h-16 w-16">
-          <AvatarImage src={student.avatarUrl} alt={student.name} />
+          <AvatarImage src={student.avatar} alt={student.name} />
           {/* Fallback 显示名字的前两个字 */}
           <AvatarFallback>{student.name.substring(0, 2)}</AvatarFallback>
         </Avatar>
@@ -87,7 +72,7 @@ export default function Page() {
           {/* 信息项：所在专业 */}
           <div>
             <p className="text-sm font-medium text-muted-foreground">所在专业</p>
-            <p className="text-lg font-medium">{student.major}</p>
+            <p className="text-lg font-medium">{student.subject}</p>
           </div>
 
           {/* 信息项：所在学院 */}
