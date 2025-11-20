@@ -14,19 +14,8 @@ import { ArrowUpDown, BookCheck } from "lucide-react"
 
 import { ColumnDef } from "@tanstack/react-table"
 import { CourseDataTable } from "@/components/app-dashborad/course-table"
+import { Course } from "@/data/types"
 
-// --- 类型定义 ---
-// 这里我们可能需要多一个 credits (学分) 字段，已选课程通常关注学分
-type CourseType = '通识课程' | '专业必修课' | '专业选修课' | '共通教育课';
-interface Course {
-  id: string;
-  name: string;
-  teacher: string;
-  type: CourseType;
-  time: string;
-  location: string;
-  credits: number; // 新增：学分
-}
 
 // --- 模拟数据 ---
 // 这些是学生 *已经选上* 的课

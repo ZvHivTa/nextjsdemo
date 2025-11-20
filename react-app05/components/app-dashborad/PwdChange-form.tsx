@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
+import { boolean, z } from "zod"
 import { useState } from "react"
 import { Loader2 } from "lucide-react"
 
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { useAppContext } from "@/components/AppContext"
+import { toast } from "sonner"
 
 // 1. 定义 Zod 验证 schema
 const formSchema = z.object({
@@ -64,13 +65,25 @@ export default function PwdChangeForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     console.log("提交的数据:", values);
-
-    // TODO: 在这里添加调用 API 修改密码的逻辑
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    console.log("密码修改成功！");
-    setIsSubmitting(false);
     
+    // TODO: 在这里添加调用 API 修改密码的逻辑, 以及根据实际情况处理失败的信息
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    //接收一个带状态码的json对象
+    if (isSubmitting) {
+        toast.success("修改密码成功", {
+          position:'top-center',
+          description: "",
+        });
+        setIsSubmitting(false);
+    }else{
+      toast.error("修改密码失败", {
+          position:'top-center',
+          description: "",
+      });
+      return;
+    }
+
+    setIsSubmitting(false);
     // 成功后可以重置表单
     form.reset();
   }

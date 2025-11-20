@@ -22,23 +22,8 @@ import { Search, ArrowUpDown } from "lucide-react"
 
 import { ColumnDef } from "@tanstack/react-table"
 import { CourseDataTable } from "@/components/app-dashborad/course-table"
+import { Course, CourseType, CourseYear } from "@/data/types"
 
-// --- (数据类型定义 - 保持不变) ---
-type CourseType = '通识课程' | '专业必修课' | '专业选修课' | '共通教育课';
-type CourseYear = '大一' | '大二' | '大三' | '大四';
-
-interface Course {
-  id: string;
-  name: string;
-  teacher: string;
-  type: CourseType;
-  time: string;
-  location: string;
-  year: CourseYear;
-  capacity: number;
-  enrolled: number;
-  college: string;
-}
 
 // --- (模拟数据 - 保持不变) ---
 const COLLEGE_OPTIONS = [
@@ -141,23 +126,48 @@ export default function SearchPage() {
   // 选课处理器
   const handleSelectCourse = useCallback((course: Course) => {
     console.log(`正在尝试选课: ${course.name} (ID: ${course.id})`);
-    // TODO: 在这里添加真实 API 调用
-    // 模拟成功:
+    // TODO: 选课处理
+    // 模拟
     setMyCourseIds(prev => new Set(prev).add(course.id));
-    // 失败后 (例如课程已满):
-    // alert("选课失败，课程已满！");
+    //根据返回的数据判断成功还是失败
+    // if (isSubmitting) {
+    //     toast.success("选课成功", {
+    //       position:'top-center',
+    //       description: "成功选择xx课程",
+    //     });
+    // }else{
+    //   toast.error("选课失败", {
+    //       position:'top-center',
+    //       description: "",
+    //   });
+    //   return;
+    // }
   }, []);
 
-  // 【修改点 1】: 添加退选处理器
+  // 退选处理器
   const handleWithdrawCourse = useCallback((course: Course) => {
     console.log(`正在尝试退选: ${course.name} (ID: ${course.id})`);
-    // TODO: 在这里添加真实 API 调用
+    // TODO: 退课处理
     // 模拟成功:
     setMyCourseIds(prev => {
       const newSet = new Set(prev);
       newSet.delete(course.id);
       return newSet;
     });
+
+    //根据返回的数据判断成功还是失败
+    // if (isSubmitting) {
+    //     toast.success("选课成功", {
+    //       position:'top-center',
+    //       description: "成功选择xx课程",
+    //     });
+    // }else{
+    //   toast.error("选课失败", {
+    //       position:'top-center',
+    //       description: "",
+    //   });
+    //   return;
+    // }
   }, []);
 
 

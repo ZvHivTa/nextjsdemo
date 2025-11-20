@@ -32,16 +32,16 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Loader2 } from "lucide-react"
+import { CourseType, CourseYear } from "@/data/types"
 
-// --- 1. 定义类型和选项 (与 admin/courses/page.tsx 保持一致) ---
-type CourseType = '通识课程' | '专业必修课' | '专业选修课' | '共通教育课';
-type CourseYear = '大一' | '大二' | '大三' | '大四';
+
 
 const COLLEGE_OPTIONS = [
   { value: "info", label: "信息工程学院" },
   { value: "lang", label: "外国语学院" },
   { value: "art", label: "艺术设计学院" },
 ];
+
 const COURSE_TYPE_OPTIONS: { value: CourseType, label: string }[] = [
   { value: '通识课程', label: '通识课程' },
   { value: '专业必修课', label: '专业必修课' },
@@ -97,7 +97,7 @@ export default function CreateCoursePage() {
     },
   });
 
-  // --- 4. 提交处理器 ---
+  //TODO: 创建课程
   const onSubmit = (values: z.infer<typeof createCourseSchema>) => {
     setLoading(true);
     
@@ -120,6 +120,20 @@ export default function CreateCoursePage() {
       
       // (可选: 跳转回课程列表页)
       // router.push("/admin/courses");
+
+      //根据返回的数据判断成功还是失败
+      // if (isSubmitting) {
+      //     toast.success("选课成功", {
+      //       position:'top-center',
+      //       description: "成功选择xx课程",
+      //     });
+      // }else{
+      //   toast.error("选课失败", {
+      //       position:'top-center',
+      //       description: "",
+      //   });
+      //   return;
+      // }
     }, 1500);
   };
 

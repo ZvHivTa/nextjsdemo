@@ -1,3 +1,4 @@
+import { UserData,UserRole } from "@/data/types";
 import {
   Calendar,
   Home,
@@ -11,30 +12,9 @@ import {
 //数据类型
 export interface State {
   role: UserRole;
-  user: StudentData | AdminData;
+  user: UserData;
   path: string; // 模拟当前路由路径
   isInitialized: boolean; // 初始化标志
-}
-
-export type UserRole = "student" | "admin" | null;
-
-interface StudentData {
-  name: string;
-  email: string;
-  avatar: string | null;
-  id: string; //  <-- 添加
-  year: string; // <-- 添加
-  subject: string; // <-- 添加
-  college: string; // <-- 添加
-}
-
-interface AdminData {
-  name: string;
-  email: string;
-  avatar: string | null;
-  id: string;
-  subject: string;
-  college: string;
 }
 
 //操作类型
@@ -51,7 +31,7 @@ export interface LoginAction {
   type: ActionType.LOGIN;
   payload: {
     role: UserRole;
-    user: StudentData | AdminData;
+    user: UserData;
     redirectPath: string;
   };
 }
@@ -67,7 +47,7 @@ export interface NavigateAction {
 
 export interface RestoreSessionAction {
   type: ActionType.RESTORE_SESSION;
-  payload: { role: UserRole; user: StudentData | AdminData; path: string };
+  payload: { role: UserRole; user:  UserData; path: string };
 }
 
 export interface InitializeEndAction {

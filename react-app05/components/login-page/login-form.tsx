@@ -27,6 +27,7 @@ import { ActionType } from "@/reducers/AppReducer"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Loader2 } from "lucide-react"
+import { toast } from "sonner"
 
 // --- 1. 修改 Schema ---
 const formSchema = z.object({
@@ -74,6 +75,17 @@ export function LoginForm({
       } else {
         role = "student";
       }
+      
+
+       // [演示逻辑]：为了演示错误提示，我们可以假设 ID "000000" 是黑名单
+      if (values.login === "000000") {
+          toast.error("登录失败", {
+            position:'top-center',
+            description: "该账户已被冻结，请联系管理员。",
+          });
+          setLoading(false);
+          return;
+      }
 
       // 构建用户数据 (模拟从后端返回)
       // TODO: 登录向后端发送请求
@@ -116,7 +128,10 @@ export function LoginForm({
           redirectPath: role === 'student' ? '/student' : '/admin',
         },
       });
-      
+      toast.success("登录成功", {
+          position:'top-center',
+          description: `欢迎回来，${values.login.length === 6 ? `${values.login}管理员` : `${values.login}同学`}！`,
+      });
       
       setLoading(false);
     }, 1000);

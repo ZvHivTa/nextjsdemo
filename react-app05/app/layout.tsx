@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-toggle/theme-provider";
 import AppContextProvider from "@/components/AppContext";
 import { AppRouter } from "@/components/AppRouter";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,7 +40,8 @@ export default function RootLayout({
             <AppContextProvider>
               <AppRouter>
                 {children}
-                </AppRouter>
+              </AppRouter>
+              <Toaster />
             </AppContextProvider>
         </ThemeProvider>
       </body>

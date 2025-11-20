@@ -57,24 +57,11 @@ import { ArrowUpDown, Search, Edit, Trash2 } from "lucide-react"
 // 引入通用表格
 import { ColumnDef } from "@tanstack/react-table"
 import { CourseDataTable } from "@/components/app-dashborad/course-table"
+import { Course, CourseType, CourseYear } from "@/data/types"
 
-// --- 类型和模拟数据 ---
-type CourseType = '通识课程' | '专业必修课' | '专业选修课' | '共通教育课';
-type CourseYear = '大一' | '大二' | '大三' | '大四';
 
-interface Course {
-  id: string;
-  name: string;
-  teacher: string;
-  type: CourseType;
-  time: string;
-  location: string;
-  year: CourseYear;
-  capacity: number;
-  enrolled: number;
-  college: string;
-  credits: number;
-}
+
+
 // (模拟数据选项)
 const COLLEGE_OPTIONS = [
   { value: "info", label: "信息工程学院" },
@@ -212,7 +199,7 @@ export default function AdminCoursesPage() {
     setIsEditDialogOpen(true);
   };
 
-  // (B) 保存编辑 (使用 react-hook-form)
+  // TODO: 更新课程信息
   const onEditSubmit = (values: z.infer<typeof courseFormSchema>) => {
     console.log("API调用: 更新课程:", values);
     
@@ -222,7 +209,19 @@ export default function AdminCoursesPage() {
         c.id === values.id ? values : c
       )
     );
-    
+    //根据返回的数据判断成功还是失败
+    // if (isSubmitting) {
+    //     toast.success("选课成功", {
+    //       position:'top-center',
+    //       description: "成功选择xx课程",
+    //     });
+    // }else{
+    //   toast.error("选课失败", {
+    //       position:'top-center',
+    //       description: "",
+    //   });
+    //   return;
+    // }
     setIsEditDialogOpen(false);
   };
 

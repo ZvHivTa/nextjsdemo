@@ -15,24 +15,9 @@ import { ArrowUpDown, Sparkles } from "lucide-react"
 
 import { ColumnDef } from "@tanstack/react-table"
 import { CourseDataTable } from "@/components/app-dashborad/course-table"
+import { Course } from "@/data/types"
 
-// --- 1. 类型定义 ---
-type CourseType = '通识课程' | '专业必修课' | '专业选修课' | '共通教育课';
-type CourseYear = '大一' | '大二' | '大三' | '大四';
 
-interface Course {
-  id: string;
-  name: string;
-  teacher: string;
-  type: CourseType;
-  time: string;
-  location: string;
-  year: CourseYear;
-  capacity: number;
-  enrolled: number;
-  college: string;
-  credits: number;
-}
 
 // --- 2. 模拟数据 ---
 
@@ -72,7 +57,7 @@ export default function RecommendPage() {
     });
   }, []);
 
-  // --- 5. 交互处理器 ---
+  // TODO 推荐选课界面的函数
 
   // 选课
   const handleSelectCourse = useCallback((course: Course) => {
