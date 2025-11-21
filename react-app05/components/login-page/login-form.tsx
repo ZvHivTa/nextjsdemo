@@ -28,6 +28,8 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { ApiResponse, LoginResponseData, Student, UserRole } from "@/data/types"
+import { api } from "@/lib/api"
 
 // --- 1. 修改 Schema ---
 const formSchema = z.object({
@@ -60,81 +62,149 @@ export function LoginForm({
     },
   })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
-    console.log("Login attempt:", values)
+    
+    try {
+      // 发起请求
+      // api.ts 内部已经判断了 code === 1，如果不为 1 会直接 throw error 跳到 catch
+      const response = await api.post<ApiResponse<LoginResponseData>>('/login', {
+        login: values.login,
+        password: values.password
+      });
 
-    // 模拟网络请求延迟
-    setTimeout(() => {
-      // 简单的模拟认证逻辑
-      let role: "student" | "admin" = "student";
-      
-      // 如果 ID 是 6 位，假设是管理员 (示例逻辑)
-      if (values.login.length === 6) {
-        role = "admin";
-      } else {
-        role = "student";
+      // 所以这里肯定成功了
+      const loginResponseData = response.data;
+
+      // 持久化
+      localStorage.setItem('app_token', loginResponseData.token);
+      localStorage.setItem('app_user', JSON.stringify(loginResponseData.id));
+      localStorage.setItem('app_role', loginResponseData.roletype);
+      // /**
+      //  * 用户基础信息 (用于 Context 和 Auth)
+      //  */
+      // export interface UserData {
+      //   id?: string; // 学号或工号 (登录后通常会有)
+      //   name: string;
+      //   email: string;
+      //   avatar: string | null;
+
+      //   //共通
+      //   college?: string; // 学院
+
+      //   // 学生特有字段
+      //   year?: string; // 年级/入学年份
+      //   subject?: string; // 专业
+      // }
+      const userData = {
+        id: loginResponseData.id, // 学号或工号 (登录后通常会有)
+        name: loginResponseData.name,
+        email: "",
+        avatar: loginResponseData.avatar,
+
+        //共通
+        college: loginResponseData.college,// 学院
+
+        // 学生特有字段
+        year: loginResponseData.year,// 年级/入学年份
+        subject: loginResponseData.major // 专业
       }
-      
-
-       // [演示逻辑]：为了演示错误提示，我们可以假设 ID "000000" 是黑名单
-      if (values.login === "000000") {
-          toast.error("登录失败", {
-            position:'top-center',
-            description: "该账户已被冻结，请联系管理员。",
-          });
-          setLoading(false);
-          return;
-      }
-
-      // 构建用户数据 (模拟从后端返回)
-      // TODO: 登录向后端发送请求
-      const mockStudent = {
-        name: "张三" ,
-        email: `${values.login}@example.com`,
-        avatar: "/placeholder-user.jpg",
-        // 补充 reducer 中定义的字段
-        id: values.login,
-        year: "2025",
-        subject: "计算机科学",
-        college: "信息学院"
-      };
-      
-      const mockAdmin = {
-        name: "李管理员",
-        email: `${values.login}@example.com`,
-        avatar: "/placeholder-user.jpg",
-        // 补充 reducer 中定义的字段
-        id: values.login,
-        subject: "计算机科学",
-        college: "信息学院"
-
-      };
-      
-      // 登录成功，保存到 LocalStorage
-      if(role === "admin"){
-        localStorage.setItem('app_user', JSON.stringify(mockAdmin));
-      }else if(role === "student"){
-        localStorage.setItem('app_user', JSON.stringify(mockStudent));
-      }
-      
-      localStorage.setItem('app_role', role);
-      // 派发登录动作
+      // 更新状态
       dispatch({
         type: ActionType.LOGIN,
         payload: {
-          role: role,
-          user: role === 'student' ? mockStudent : mockAdmin,
-          redirectPath: role === 'student' ? '/student' : '/admin',
+          role: loginResponseData.roletype,
+          user: userData,
+          redirectPath: `/${loginResponseData.roletype}`,
         },
       });
+
       toast.success("登录成功", {
-          position:'top-center',
-          description: `欢迎回来，${values.login.length === 6 ? `${values.login}管理员` : `${values.login}同学`}！`,
+        description: `欢迎回来，${userData.name}！`,
       });
+
+    } catch (error: any) {
+      console.error("Login Failed:", error);
       
+      // api.ts 抛出的错误 message 已经是后端的 msg 了
+      toast.error("登录失败", {
+        description: error.message || "请检查账号密码或网络连接。",
+      });
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
+    
+    // // 模拟网络请求延迟
+    // setTimeout(() => {
+    //   // 简单的模拟认证逻辑
+    //   let role: "student" | "admin" = "student";
+      
+    //   // 如果 ID 是 6 位，假设是管理员 (示例逻辑)
+    //   if (values.login.length === 6) {
+    //     role = "admin";
+    //   } else {
+    //     role = "student";
+    //   }
+      
+
+    //    // [演示逻辑]：为了演示错误提示，我们可以假设 ID "000000" 是黑名单
+    //   if (values.login === "000000") {
+    //       toast.error("登录失败", {
+    //         position:'top-center',
+    //         description: "该账户已被冻结，请联系管理员。",
+    //       });
+    //       setLoading(false);
+    //       return;
+    //   }
+
+    //   // 构建用户数据 (模拟从后端返回)
+    //   // TODO: 登录向后端发送请求
+    //   const mockStudent = {
+    //     name: "张三" ,
+    //     email: `${values.login}@example.com`,
+    //     avatar: "/placeholder-user.jpg",
+    //     // 补充 reducer 中定义的字段
+    //     id: values.login,
+    //     year: "2025",
+    //     subject: "计算机科学",
+    //     college: "信息学院"
+    //   };
+      
+    //   const mockAdmin = {
+    //     name: "李管理员",
+    //     email: `${values.login}@example.com`,
+    //     avatar: "/placeholder-user.jpg",
+    //     // 补充 reducer 中定义的字段
+    //     id: values.login,
+    //     subject: "计算机科学",
+    //     college: "信息学院"
+
+    //   };
+      
+    //   // 登录成功，保存到 LocalStorage
+    //   if(role === "admin"){
+    //     localStorage.setItem('app_user', JSON.stringify(mockAdmin));
+    //   }else if(role === "student"){
+    //     localStorage.setItem('app_user', JSON.stringify(mockStudent));
+    //   }
+      
+    //   localStorage.setItem('app_role', role);
+    //   // 派发登录动作
+    //   dispatch({
+    //     type: ActionType.LOGIN,
+    //     payload: {
+    //       role: role,
+    //       user: role === 'student' ? mockStudent : mockAdmin,
+    //       redirectPath: role === 'student' ? '/student' : '/admin',
+    //     },
+    //   });
+    //   toast.success("登录成功", {
+    //       position:'top-center',
+    //       description: `欢迎回来，${values.login.length === 6 ? `${values.login}管理员` : `${values.login}同学`}！`,
+    //   });
+      
+    //   setLoading(false);
+    // }, 1000);
   }
 
   return (

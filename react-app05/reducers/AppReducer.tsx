@@ -70,7 +70,7 @@ export const initialState: State = {
     avatar: null,
     id: "",
     year: "",
-    subject: "",
+    major: "",
     college: "",
   },
   isInitialized: false, // [默认] 未初始化
