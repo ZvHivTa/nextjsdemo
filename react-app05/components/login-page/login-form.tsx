@@ -33,7 +33,7 @@ import { api } from "@/lib/api"
 
 // --- 1. 修改 Schema ---
 const formSchema = z.object({
-  login: z.string()
+  id: z.string()
     // 使用正则：^ 表示开始，$ 表示结束
     // \d{6} 表示6个数字，\d{8} 表示8个数字
     // | 表示或者
@@ -57,7 +57,7 @@ export function LoginForm({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      login: "",
+      id: "",
       password: "",
     },
   })
@@ -69,7 +69,7 @@ export function LoginForm({
       // 发起请求
       // api.ts 内部已经判断了 code === 1，如果不为 1 会直接 throw error 跳到 catch
       const response = await api.post<ApiResponse<LoginResponseData>>('/login', {
-        login: values.login,
+        id: parseInt(values.id),
         password: values.password
       });
 
@@ -78,8 +78,8 @@ export function LoginForm({
 
       // 持久化
       localStorage.setItem('app_token', loginResponseData.token);
-      localStorage.setItem('app_user', JSON.stringify(loginResponseData.id));
-      localStorage.setItem('app_role', loginResponseData.roletype);
+      localStorage.setItem('app_user', loginResponseData);
+      
       // /**
       //  * 用户基础信息 (用于 Context 和 Auth)
       //  */
@@ -133,78 +133,6 @@ export function LoginForm({
     } finally {
       setLoading(false);
     }
-    
-    // // 模拟网络请求延迟
-    // setTimeout(() => {
-    //   // 简单的模拟认证逻辑
-    //   let role: "student" | "admin" = "student";
-      
-    //   // 如果 ID 是 6 位，假设是管理员 (示例逻辑)
-    //   if (values.login.length === 6) {
-    //     role = "admin";
-    //   } else {
-    //     role = "student";
-    //   }
-      
-
-    //    // [演示逻辑]：为了演示错误提示，我们可以假设 ID "000000" 是黑名单
-    //   if (values.login === "000000") {
-    //       toast.error("登录失败", {
-    //         position:'top-center',
-    //         description: "该账户已被冻结，请联系管理员。",
-    //       });
-    //       setLoading(false);
-    //       return;
-    //   }
-
-    //   // 构建用户数据 (模拟从后端返回)
-    //   // TODO: 登录向后端发送请求
-    //   const mockStudent = {
-    //     name: "张三" ,
-    //     email: `${values.login}@example.com`,
-    //     avatar: "/placeholder-user.jpg",
-    //     // 补充 reducer 中定义的字段
-    //     id: values.login,
-    //     year: "2025",
-    //     subject: "计算机科学",
-    //     college: "信息学院"
-    //   };
-      
-    //   const mockAdmin = {
-    //     name: "李管理员",
-    //     email: `${values.login}@example.com`,
-    //     avatar: "/placeholder-user.jpg",
-    //     // 补充 reducer 中定义的字段
-    //     id: values.login,
-    //     subject: "计算机科学",
-    //     college: "信息学院"
-
-    //   };
-      
-    //   // 登录成功，保存到 LocalStorage
-    //   if(role === "admin"){
-    //     localStorage.setItem('app_user', JSON.stringify(mockAdmin));
-    //   }else if(role === "student"){
-    //     localStorage.setItem('app_user', JSON.stringify(mockStudent));
-    //   }
-      
-    //   localStorage.setItem('app_role', role);
-    //   // 派发登录动作
-    //   dispatch({
-    //     type: ActionType.LOGIN,
-    //     payload: {
-    //       role: role,
-    //       user: role === 'student' ? mockStudent : mockAdmin,
-    //       redirectPath: role === 'student' ? '/student' : '/admin',
-    //     },
-    //   });
-    //   toast.success("登录成功", {
-    //       position:'top-center',
-    //       description: `欢迎回来，${values.login.length === 6 ? `${values.login}管理员` : `${values.login}同学`}！`,
-    //   });
-      
-    //   setLoading(false);
-    // }, 1000);
   }
 
   return (
@@ -223,7 +151,7 @@ export function LoginForm({
               {/* Login Field */}
               <FormField
                 control={form.control}
-                name="login"
+                name="id"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>student or staff (ID)</FormLabel>

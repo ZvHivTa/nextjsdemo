@@ -1,7 +1,7 @@
 import { toast } from "sonner";
 
 // 1. 定义后端基础地址
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 interface RequestOptions extends RequestInit {
   body?: any;

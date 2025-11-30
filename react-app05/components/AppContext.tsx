@@ -27,6 +27,7 @@ export default function AppContextProvider(
     useEffect(() => {
         const storedUser = localStorage.getItem('app_user');
         const storedRole = localStorage.getItem('app_role');
+        const storedToken = localStorage.getItem('app_token');
         
         if (storedUser && storedRole) {
             try {

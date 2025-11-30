@@ -1,21 +1,13 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { useRouter } from "next/navigation"
+import * as React from "react"
 import {
-  AudioWaveform,
   BookOpen,
-  Bot,
-  Command,
-  Frame,
-  GalleryVerticalEnd,
   Info,
-  Map,
-  PieChart,
-  Settings2,
-  SquareTerminal,
-  User,
-} from "lucide-react";
+  Users,
+  ShieldCheck
+} from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import {
   Sidebar,
@@ -23,47 +15,33 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
-} from "@/components/ui/sidebar";
+} from '@/components/ui/sidebar'
 
-import NavMain from "./nav-main";
-import NavUser from "./nav-user";
-import { ThemeModeToggle } from "@/components/theme-toggle/thememode-toggle";
-import { useAppContext } from "../AppContext";
-import { ActionType } from "@/reducers/AppReducer";
+// 1. 引入 Skeleton 组件
+import { Skeleton } from "@/components/ui/skeleton"
 
-// --- 1. 导航数据定义 (保留并完善类型) ---
+import NavMain from "./nav-main"
+import NavUser from "./nav-user"
+import { ThemeModeToggle } from "@/components/theme-toggle/thememode-toggle"
+import { useAppContext } from "../AppContext"
+import { ActionType } from "@/reducers/AppReducer"
+
+// ... (接口和 data 定义保持不变，为了节省篇幅省略) ...
 interface NavItem {
-  title: string;
-  url: string;
-  icon: React.ElementType; // LucideIcon type
-  isActive: boolean;
-  items: { title: string; url: string }[];
+    title: string;
+    url: string;
+    icon: React.ElementType; 
+    isActive: boolean;
+    items: { title: string; url: string }[];
 }
 
-// This is sample data.
 const data = {
+  // ... (保持不变)
   user: {
     name: "shadcn",
     email: "m@example.com",
     avatar: "/avatars/shadcn.jpg",
   },
-  teams: [
-    {
-      name: "Acme Inc",
-      logo: GalleryVerticalEnd,
-      plan: "Enterprise",
-    },
-    {
-      name: "Acme Corp.",
-      logo: AudioWaveform,
-      plan: "Startup",
-    },
-    {
-      name: "Evil Corp.",
-      logo: Command,
-      plan: "Free",
-    },
-  ],
   navMainStudent: [
     {
       title: "Personal",
@@ -71,14 +49,8 @@ const data = {
       icon: Info,
       isActive: true,
       items: [
-        {
-          title: "Personal Info",
-          url: "/student/info",
-        },
-        {
-          title: "Password Change",
-          url: "/student/PwdChange",
-        },
+        { title: "Personal Info", url: "/student/info" },
+        { title: "Password Change", url: "/student/PwdChange" },
       ],
     },
     {
@@ -87,132 +59,124 @@ const data = {
       icon: BookOpen,
       isActive: true,
       items: [
-        {
-          title: "Search Course",
-          url: "/student/search",
-        },
-        {
-          title: "Recommended Course",
-          url: "/student/recommend",
-        },
-        {
-          title: "Selected Course",
-          url: "/student/selected",
-        },
+        { title: "Search Course", url: "/student/search" },
+        { title: "Recommended Course", url: "/student/recommend" },
+        { title: "Selected Course", url: "/student/selected" },
       ],
     },
   ] as NavItem[],
-
-  navMainStaff: [
+  navMainAdmin: [
     {
-      title: "Personal",
+      title: "Management",
       url: "/admin",
-      icon: Info,
+      icon: ShieldCheck,
       isActive: true,
       items: [
-        {
-          title: "Personal Info",
-          url: "/admin/info",
-        },
-        {
-          title: "Password Change",
-          url: "/admin/PwdChange",
-        },
+        { title: "Personal Info", url: "/admin/info" },
+        { title: "Password Change", url: "/admin/password" },
       ],
     },
     {
       title: "Course",
-      url: "/admin",
+      url: "/admin/courses",
       icon: BookOpen,
       isActive: true,
       items: [
-        {
-          title: "Search Course",
-          url: "/admin/courseSearch",
-        },
-        {
-          title: "Create Course",
-          url: "/admin/courseCreate",
-        },
+        { title: "Course List", url: "/admin/courses" }, 
+        { title: "Create Course", url: "/admin/courses/create" }, 
       ],
     },
-
     {
       title: "Student",
-      url: "/admin",
-      icon: User,
+      url: "/admin/students",
+      icon: Users,
       isActive: true,
       items: [
-        {
-          title: "Management",
-          url: "/admin/students",
-        },
+        { title: "Student List", url: "/admin/students" },
       ],
     },
   ] as NavItem[],
-};
+}
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  // 1. 从 AppContext 中获取状态和 dispatch
-  const { state, dispatch } = useAppContext();
-  const { role, user, path } = state;
-  const router = useRouter();
+    const router = useRouter(); 
+    const { state, dispatch } = useAppContext();
+    
+    // 2. 获取 isInitialized 状态
+    const { role, user, path, isInitialized } = state; 
 
-     const handleLogout = () => {
-        console.log("🚪 Logout Clicked. Clearing storage...");
-        
-        // 1. 强制清除所有相关的 LocalStorage
+    const handleLogout = () => {
         try {
             localStorage.removeItem('app_user');
             localStorage.removeItem('app_role');
-            // 双重保险：如果用了 clear 会更彻底，但可能会误删其他无关数据
-            // localStorage.clear(); 
+            localStorage.removeItem('app_token');
         } catch (e) {
             console.error("Error clearing local storage:", e);
         }
-
-        // 2. 验证是否清除成功 (调试用)
-        const userCheck = localStorage.getItem('app_user');
-        if (userCheck) {
-            console.error("❌ Storage NOT cleared!");
-        } else {
-            console.log("✅ Storage cleared successfully.");
-        }
-
-        // 3. 更新 Context 状态 (虽然跳转后会重置，但保持状态一致性是个好习惯)
         dispatch({ type: ActionType.LOGOUT });
-
-        // 4. 强制跳转到登录页
-        console.log("🚀 Redirecting to /login");
         router.replace('/login');
     };
-  // 3. 导航逻辑
-  // 修正：为了配合最新的 AppRouter.tsx 逻辑（AppRouter负责导航），
-  // 侧边栏点击只需要更新 Context 中的 path 即可，AppRouter 会处理 router.push
-  const handleNavigate = (newPath: string) => {
-    dispatch({ type: ActionType.NAVIGATE, route: newPath });
-  };
 
-  // 4. 根据角色选择导航菜单
-  const navItems = role === "student" ? data.navMainStudent : data.navMainStaff;
+    const handleNavigate = (newPath: string) => {
+        dispatch({ type: ActionType.NAVIGATE, route: newPath });
+    };
+
+    const currentRole = role ? role.toLowerCase() : null;
+    let navItems: NavItem[] = [];
+    
+    // 只有在初始化完成且有角色时才计算菜单
+    if (isInitialized) {
+        if (currentRole === 'student') {
+            navItems = data.navMainStudent;
+        } else if (currentRole === 'admin') {
+            navItems = data.navMainAdmin;
+        }
+    }
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-          <ThemeModeToggle />
+            <ThemeModeToggle/>
         </div>
       </SidebarHeader>
+      
       <SidebarContent>
-        <NavMain
-          items={navItems}
-          currentPath={path}
-          navigate={handleNavigate}
-        />
+        {/* 3. 根据初始化状态切换显示 */}
+        {!isInitialized ? (
+            // 加载状态：显示骨架屏
+            <div className="px-4 py-2 space-y-6">
+                {/* 模拟两个分组 */}
+                <div className="space-y-3">
+                    <Skeleton className="h-4 w-20 bg-sidebar-accent/50" />
+                    <Skeleton className="h-8 w-full bg-sidebar-accent/50" />
+                    <Skeleton className="h-8 w-full bg-sidebar-accent/50" />
+                </div>
+                <div className="space-y-3">
+                    <Skeleton className="h-4 w-24 bg-sidebar-accent/50" />
+                    <Skeleton className="h-8 w-full bg-sidebar-accent/50" />
+                    <Skeleton className="h-8 w-full bg-sidebar-accent/50" />
+                </div>
+            </div>
+        ) : (
+            // 完成状态：显示真实菜单
+            <NavMain items={navItems} 
+                    currentPath={path}
+                    navigate={handleNavigate}/>
+        )}
       </SidebarContent>
+
       <SidebarFooter>
-        <NavUser user={user} onLogout={handleLogout} />
+        {/* 4. 底部用户信息也加上骨架屏 */}
+        {!isInitialized || !user ? (
+            <div className="p-2">
+                <Skeleton className="h-12 w-full rounded-lg bg-sidebar-accent/50" />
+            </div>
+        ) : (
+            <NavUser user={user} onLogout = {handleLogout}/>
+        )}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  );
+  )
 }

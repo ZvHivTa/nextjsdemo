@@ -47,12 +47,13 @@ export function AppRouter({
 
         const isStudentPath = currentPath.startsWith(STUDENT_PATH_PREFIX);
         const isAdminPath = currentPath.startsWith(ADMIN_PATH_PREFIX);
+        const normalizedRole = role.toLowerCase(); 
         
-        const expectedPathPrefix = role === 'student' ? STUDENT_PATH_PREFIX : ADMIN_PATH_PREFIX;
+        const expectedPathPrefix = normalizedRole === 'student' ? STUDENT_PATH_PREFIX : ADMIN_PATH_PREFIX;
         
         const isValidPathForRole = 
-            (role === 'student' && isStudentPath) || 
-            (role === 'admin' && isAdminPath);
+            (normalizedRole === 'student' && isStudentPath) || 
+            (normalizedRole === 'admin' && isAdminPath);
             
         const isPublicPath = currentPath === LOGIN_PATH || currentPath === ROOT_PATH;
 
