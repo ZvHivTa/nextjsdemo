@@ -80,22 +80,6 @@ export function LoginForm({
       localStorage.setItem('app_token', loginResponseData.token);
       localStorage.setItem('app_user', loginResponseData);
       
-      // /**
-      //  * 用户基础信息 (用于 Context 和 Auth)
-      //  */
-      // export interface UserData {
-      //   id?: string; // 学号或工号 (登录后通常会有)
-      //   name: string;
-      //   email: string;
-      //   avatar: string | null;
-
-      //   //共通
-      //   college?: string; // 学院
-
-      //   // 学生特有字段
-      //   year?: string; // 年级/入学年份
-      //   subject?: string; // 专业
-      // }
       const userData = {
         id: loginResponseData.id, // 学号或工号 (登录后通常会有)
         name: loginResponseData.name,
