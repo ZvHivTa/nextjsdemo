@@ -17,281 +17,313 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Search, ArrowUpDown } from "lucide-react"
+import { Search, ArrowUpDown, Loader2, Filter } from "lucide-react"
+import { toast } from "sonner"
 
 
-import { ColumnDef } from "@tanstack/react-table"
+import { ColumnDef, PaginationState } from "@tanstack/react-table" 
+import { api } from "@/lib/api"
+import { ApiResponse, PaginatedResponse, Course, CourseType, CourseYear, College } from "@/types"
+import { useAppContext } from "@/components/AppContext"
 import { CourseDataTable } from "@/components/app-dashborad/course-table"
-import { Course, CourseType, CourseYear } from "@/data/types"
 
-
-// --- (模拟数据 - 保持不变) ---
-const COLLEGE_OPTIONS = [
-  { value: "info", label: "信息工程学院" },
-  { value: "lang", label: "外国语学院" },
-  { value: "art", label: "艺术设计学院" },
-];
+// 常量保持不变
 const COURSE_TYPE_OPTIONS: { value: CourseType, label: string }[] = [
-  { value: '通识课程', label: '通识课程' },
-  { value: '专业必修课', label: '专业必修课' },
-  { value: '专业选修课', label: '专业选修课' },
-  { value: '共通教育课', label: '共通教育课' },
+  { value: 1, label: '通识选修课' },
+  { value: 2, label: '专业必修课' },
+  { value: 3, label: '专业选修课' },
+  { value: 4, label: '通识必修课' },
 ];
-const YEAR_OPTIONS: { value: CourseYear, label: string }[] = [
-  { value: '大一', label: '大一' },
-  { value: '大二', label: '大二' },
-  { value: '大三', label: '大三' },
-  { value: '大四', label: '大四' },
-];
-const MOCK_ALL_COURSES: Course[] = [
-  { id: "C001", name: "高等数学A", teacher: "王教授", type: "专业必修课", time: "周一 3-4节", location: "教A-101", year: "大一", capacity: 100, enrolled: 85, college: "info" },
-  { id: "C002", name: "大学英语", teacher: "李老师", type: "共通教育课", time: "周二 1-2节", location: "文B-203", year: "大一", capacity: 150, enrolled: 149, college: "lang" },
-  { id: "C003", name: "数据结构", teacher: "刘博士", type: "专业必修课", time: "周三 5-6节", location: "教A-305", year: "大二", capacity: 80, enrolled: 80, college: "info" },
-  { id: "C004", name: "日本文化赏析", teacher: "佐藤", type: "通识课程", time: "周四 7-8节", location: "文C-101", year: "大二", capacity: 120, enrolled: 60, college: "lang" },
-  { id: "C005", name: "设计素描", teacher: "陈老师", type: "专业选修课", time: "周五 1-4节", location: "艺-202", year: "大三", capacity: 40, enrolled: 30, college: "art" },
-  { id: "C006", name: "计算机网络", teacher: "赵教授", type: "专业必修课", time: "周二 3-4节", location: "教A-101", year: "大三", capacity: 80, enrolled: 75, college: "info" },
-];
-const MOCK_MY_COURSE_IDS = new Set<string>(['C003', 'C005']);
 
+const YEAR_OPTIONS: { value: CourseYear, label: string }[] = [
+  { value: 1, label: '大一' },
+  { value: 2, label: '大二' },
+  { value: 3, label: '大三' },
+  { value: 4, label: '大四' },
+];
 
 export default function SearchPage() {
-  // --- (筛选器状态 - 保持不变) ---
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedID, setSelectedID] = useState("all");
+  const { state } = useAppContext();
+  const user = state.user;
+
+  // --- 1. 状态管理 ---
+  
+  const [collegeOptions, setCollegeOptions] = useState<{ value: string, label: string }[]>([]);
+
+  // 筛选条件
   const [selectedCollege, setSelectedCollege] = useState("all");
-  const [selectedType, setSelectedType] = useState("all");
-  const [selectedYear, setSelectedYear] = useState("all");
+  const [selectedType, setSelectedType] = useState<number | "all">(1);
+  const [selectedYear, setSelectedYear] = useState<number | "all">("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // --- (数据状态 - 保持不变) ---
+  // [新增] 分页状态管理
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0, // TanStack Table 从 0 开始
+    pageSize: 10, // 默认每页 10 条
+  });
+  
+  // [新增] 总条数状态
+  const [rowCount, setRowCount] = useState(0);
+
   const [loading, setLoading] = useState(true);
-  const [displayedCourses, setDisplayedCourses] = useState<Course[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [myCourseIds, setMyCourseIds] = useState<Set<string>>(new Set());
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
-  // --- (runSearch 模拟 API - 保持不变) ---
-  const runSearch = (
-    currentQuery: string,
-    currentID:string,
-    currentCollege: string,
-    currentType: string,
-    currentYear: string
-  ) => {
+  // --- 2. 初始化数据获取 ---
+
+  const fetchColleges = useCallback(async () => {
+    // ... 代码保持不变 ...
+    try {
+      const res = await api.get<ApiResponse<College[]>>('/colleges');
+      if (res.success) {
+        const options = res.data.map(c => ({ value: c.id, label: c.name }));
+        setCollegeOptions(options);
+      }
+    } catch (error) {
+       // ... 错误处理保持不变 ...
+       setCollegeOptions([
+        { value: "info", label: "信息工程学院 (Local)" },
+        { value: "lang", label: "外国语学院 (Local)" },
+        { value: "art", label: "艺术设计学院 (Local)" },
+      ]);
+    }
+  }, []);
+
+  // [核心修改] fetchCourses
+  const fetchCourses = useCallback(async () => {
     setLoading(true);
-    console.log("🚀 正在模拟 API 调用, 筛选条件:", {
-      query: currentQuery, college: currentCollege, type: currentType, year: currentYear
-    });
-
-    new Promise(res => setTimeout(res, 500)).then(() => {
-      // (模拟后端筛选逻辑)
-      let courses = MOCK_ALL_COURSES;
+    try {
+      const params = new URLSearchParams();
       
-      if (currentQuery) {
-        const lowerQuery = currentQuery.toLowerCase();
-        courses = courses.filter(course =>
-          course.name.toLowerCase().includes(lowerQuery) ||
-          course.teacher.toLowerCase().includes(lowerQuery)||
-          course.id.includes(currentQuery)
-        );
-      }
-      if (currentID !== "all") {
-        courses = courses.filter(course => course.id === currentID);
-      }
-      if (currentCollege !== "all") {
-        courses = courses.filter(course => course.college === currentCollege);
-      }
-      if (currentType !== "all") {
-        courses = courses.filter(course => course.type === currentType);
-      }
-      if (currentYear !== "all") {
-        courses = courses.filter(course => course.year === currentYear);
-      }
+      // [关键] 使用 pagination 状态构建参数
+      // 前端 pageIndex 是 0，后端 page 需要 1
+      params.append("page", (pagination.pageIndex + 1).toString());
+      params.append("pageSize", pagination.pageSize.toString());
+      
+      if (searchQuery) params.append("keyword", searchQuery);
+      if (selectedCollege !== "all") params.append("collegeId", selectedCollege);
+      if (selectedType !== "all") params.append("typeId", selectedType.toString());
+      if (selectedYear !== "all") params.append("year", selectedYear.toString());
 
-      setDisplayedCourses(courses);
+      const res = await api.get<ApiResponse<PaginatedResponse<Course>>>(`/student/search_courses?${params.toString()}`);
+      if (res.success) {
+        // 假设后端返回结构是 { data: { records: [], total: 100 } }
+        // 请根据实际后端字段调整，这里假设是 data.data (列表) 和 data.total (总数)
+        // 如果你的 ApiResponse 定义里 data 是 PaginatedResponse，那么通常列表在 .records 或 .list 里
+        
+        // 假设 PaginatedResponse 结构为: { records: Course[], total: number }
+        // 如果你的后端直接把 List 放在 data 里，那这里要对应改。
+        // 根据之前的讨论，通常是：
+        const responseData = res.data; 
+        
+        // 这里做一个兼容性处理，视你 types 定义而定
+        if (Array.isArray(responseData)) {
+            // 如果后端没分页，直接返回了数组
+            setCourses(responseData);
+            setRowCount(responseData.length);
+        } else {
+            // 标准分页结构
+            // 注意：检查你的 PaginatedResponse 类型定义，字段名可能是 list, records, rows 等
+            setCourses((responseData as any).records || (responseData as any).list || []);
+            setRowCount((responseData as any).total || 0);
+        }
+      }
+    } catch (error) {
+      console.error("Fetch courses error:", error);
+      toast.error("获取课程列表失败");
+    } finally {
       setLoading(false);
-    });
-  };
+    }
+  }, [searchQuery, selectedCollege, selectedType, selectedYear, pagination]); // 依赖 pagination
 
-  // --- (搜索按钮处理器 - 保持不变) ---
-  const handleSearchClick = () => {
-    runSearch(searchQuery,selectedID,  selectedCollege, selectedType, selectedYear);
-  };
+  const fetchMyCourses = useCallback(async () => {
+    // ... 代码保持不变 ...
+    try {
+      const res = await api.get<ApiResponse<Course[]>>('/student/my_courses');
+      if (res.success) {
+        const ids = new Set(res.data.map(c => c.id));
+        setMyCourseIds(ids);
+      }
+    } catch (error) {
+      console.error("Fetch my courses error:", error);
+    }
+  }, []);
 
-  // --- (useEffect 初始加载 - 保持不变) ---
+  // [修改] 初始加载
   useEffect(() => {
-    setMyCourseIds(MOCK_MY_COURSE_IDS);
-    runSearch("","all", "all", "all", "all");
+    fetchColleges();
+    fetchMyCourses();
+    // 初始加载一次第一页
+    fetchCourses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
-  // --- (选课/退选处理器 - 修改) ---
+  // [新增] 监听翻页事件
+  // 当用户点击“下一页”时，pagination 变了，自动触发 fetchCourses
+  // 注意：我们需要区分“是用户翻页”还是“用户重置了筛选”
+  // 但简单来说，只要 pagination 变了，就应该查新数据（只要 fetchCourses 里的筛选条件也是最新的）
+  useEffect(() => {
+     // 这里我们利用 useEffect 来响应页码变化
+     // 为了避免初始加载时的重复调用（如果上面的 useEffect 已经调了一次），可以加个 ref 判断，或者简单地让它跑
+     fetchCourses();
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination]); // 仅当页码/页大小变化时触发
+
+  // 自动匹配年级逻辑 (保持不变)
+  useEffect(() => {
+    if (user && user.year) {
+        const yearMap: Record<string, number> = { "大一": 1, "大二": 2, "大三": 3, "大四": 4 };
+        if (yearMap[user.year]) {
+            setSelectedYear(yearMap[user.year] as CourseYear);
+        }
+    }
+  }, [user]);
+
+
+  // --- 3. 交互处理器 ---
   
-  // 选课处理器
-  const handleSelectCourse = useCallback((course: Course) => {
-    console.log(`正在尝试选课: ${course.name} (ID: ${course.id})`);
-    // TODO: 选课处理
-    // 模拟
-    setMyCourseIds(prev => new Set(prev).add(course.id));
-    //根据返回的数据判断成功还是失败
-    // if (isSubmitting) {
-    //     toast.success("选课成功", {
-    //       position:'top-center',
-    //       description: "成功选择xx课程",
-    //     });
-    // }else{
-    //   toast.error("选课失败", {
-    //       position:'top-center',
-    //       description: "",
-    //   });
-    //   return;
-    // }
-  }, []);
+  // [关键修改] 点击搜索按钮逻辑
+  const handleSearchClick = () => {
+    // 逻辑：
+    // 1. 如果当前不在第1页，重置回第1页 (这会触发上面的 useEffect[pagination]，从而自动调用 fetchCourses)
+    // 2. 如果当前已经在第1页，useEffect 不会触发，需要手动调用 fetchCourses
+    
+    if (pagination.pageIndex !== 0) {
+        setPagination(prev => ({ ...prev, pageIndex: 0 }));
+    } else {
+        fetchCourses();
+    }
+  };
 
-  // 退选处理器
-  const handleWithdrawCourse = useCallback((course: Course) => {
-    console.log(`正在尝试退选: ${course.name} (ID: ${course.id})`);
-    // TODO: 退课处理
-    // 模拟成功:
-    setMyCourseIds(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(course.id);
-      return newSet;
-    });
+  const handleSelectCourse = async (course: Course) => {
+    // ... 保持不变 ...
+    setProcessingId(course.id);
+    try {
+      await api.post<ApiResponse<null>>('/student/enroll', { courseId: course.id });
+      toast.success("选课成功", { description: `已选择：${course.name}` });
+      setMyCourseIds(prev => new Set(prev).add(course.id));
+    } catch (error: any) {
+      toast.error("选课失败", { description: error.message });
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
-    //根据返回的数据判断成功还是失败
-    // if (isSubmitting) {
-    //     toast.success("选课成功", {
-    //       position:'top-center',
-    //       description: "成功选择xx课程",
-    //     });
-    // }else{
-    //   toast.error("选课失败", {
-    //       position:'top-center',
-    //       description: "",
-    //   });
-    //   return;
-    // }
-  }, []);
+  const handleWithdrawCourse = async (course: Course) => {
+    // ... 保持不变 ...
+    setProcessingId(course.id);
+    try {
+      await api.post<ApiResponse<null>>('/student/withdraw', { courseId: course.id });
+      toast.success("退课成功", { description: `已退选：${course.name}` });
+      setMyCourseIds(prev => {
+        const next = new Set(prev);
+        next.delete(course.id);
+        return next;
+      });
+    } catch (error: any) {
+      toast.error("退课失败", { description: error.message });
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
-
-  // --- (列定义 - 修改) ---
+  // --- 4. 列定义 (保持不变) ---
   const columns = useMemo<ColumnDef<Course>[]>(() => [
-    {
-      accessorKey: "id",
-      header: "课程id",
-      id: "课程id",
-    },
-    {
-      accessorKey: "name",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          课程名称
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      id: "课程名称",
-    },
-    {
-      accessorKey: "teacher",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          教师
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      ),
-      id: "教师",
-    },
-    {
-      accessorKey: "type",
-      header: "课程类型",
-      id: "课程类型",
-    },
-    {
-      accessorKey: "time",
-      header: "时间 / 地点",
-      id: "时间地点",
-      cell: ({ row }) => (
-        <div>
-          <div>{row.original.time}</div>
-          <div className="text-sm text-muted-foreground">{row.original.location}</div>
-        </div>
-      )
-    },
-    {
-      accessorKey: "year",
-      header: "学年",
-      id: "学年",
-    },
-    {
-      accessorKey: "enrolled",
-      header: "容量 / 已选",
-      id: "容量",
-      cell: ({ row }) => {
-        const isFull = row.original.enrolled >= row.original.capacity;
+      // ... 保持不变 ...
+      { 
+        accessorKey: "name", 
+        header: ({ column }) => (
+          <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+            课程名称 <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        id: "name" 
+      },
+      { accessorKey: "teacher", header: "教师", id: "teacher" },
+      { accessorKey: "credit", header: "学分", id: "credit" },
+       { accessorKey: "subjectName", header: "专业", id: "subjectName" },
+        { accessorKey: "collegeName", header: "学院", id: "collegeName" },
+      { 
+        accessorKey: "type", 
+        header: "类型", 
+        cell: ({ row }) => {
+          const val = row.original.type;
+          const option = COURSE_TYPE_OPTIONS.find(o => o.value === val);
+          return option ? option.label : val;
+        }
+      },
+      { accessorKey: "time", header: "时间", id: "time" },
+      { accessorKey: "place", header: "上课地点", id: "place" },
+      { accessorKey: "capactity", 
+        header: "容量", 
+        cell: ({ row }) => {
+        const isFull = row.original.chosenNumber >= row.original.capacity;
         return (
           <span className={isFull ? "font-bold text-destructive" : ""}>
-            {row.original.enrolled} / {row.original.capacity}
+            {row.original.chosenNumber} / {row.original.capacity}
           </span>
         )
+      } },
+      { 
+          id: "actions", 
+          header: "操作",
+          cell: ({ row }) => {
+            const course = row.original;
+            const isSelected = myCourseIds.has(course.id);
+            const isFull = course.enrolled >= course.capacity;
+            const isProcessing = processingId === course.id;
+
+            if (isSelected) {
+              return (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  disabled={isProcessing}
+                  onClick={() => handleWithdrawCourse(course)}
+                >
+                  {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  退选
+                </Button>
+              );
+            }
+
+            return (
+              <Button
+                variant="default"
+                size="sm"
+                disabled={isFull || isProcessing}
+                onClick={() => handleSelectCourse(course)}
+              >
+                {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isFull ? "已满" : "选课"}
+              </Button>
+            );
+          }
       }
-    },
-    {
-      id: "actions",
-      header: "操作",
-      // 【修改点 2】: 单元格渲染逻辑
-      cell: ({ row }) => {
-        const course = row.original;
-        const isSelected = myCourseIds.has(course.id);
+  ], [myCourseIds, processingId]);
 
-        // 如果已选，显示“退选”按钮
-        if (isSelected) {
-          return (
-            <Button
-              variant="outline" // 使用 "outline" 或 "destructive" 均可
-              size="sm"
-              onClick={() => handleWithdrawCourse(course)}
-            >
-              退选
-            </Button>
-          );
-        }
+  // 辅助函数 (保持不变)
+  const getCurrentTypeLabel = () => {
+    if (selectedType === 'all') return '所有类型';
+    return COURSE_TYPE_OPTIONS.find(o => o.value === selectedType)?.label || selectedType;
+  };
 
-        // 如果未选，执行之前的逻辑（检查是否已满）
-        const isFull = course.enrolled >= course.capacity;
-        const isDisabled = isFull;
-
-        return (
-          <Button
-            variant="default"
-            size="sm"
-            disabled={isDisabled}
-            onClick={() => handleSelectCourse(course)}
-          >
-            {isFull ? "已满" : "选课"}
-          </Button>
-        );
-      }
-    }
-  ], 
-  // 【修改点 3】: 添加新处理器到依赖数组
-  [myCourseIds, handleSelectCourse, handleWithdrawCourse]); 
-
-  // --- (渲染页面 - 保持不变) ---
   return (
     <div className="space-y-4">
-      {/* --- 筛选器区域 (保持不变) --- */}
       <Card>
         <CardHeader>
-          <CardTitle>课程检索</CardTitle>
-          <CardDescription>按条件筛选全校课程</CardDescription>
+          <CardTitle>全校课程检索</CardTitle>
+          <CardDescription>
+            {selectedType === 1 ? 
+                "正在展示全校通识选修课，您可以自由选择感兴趣的课程。" : 
+                `当前筛选：${selectedCollege === 'all' ? '所有学院' : (collegeOptions.find(c => c.value === selectedCollege)?.label || '指定学院')} - ${getCurrentTypeLabel()}`
+            }
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             
-            {/* 搜索框和按钮 */}
             <div className="md:col-span-3 relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -302,44 +334,49 @@ export default function SearchPage() {
                 onKeyDown={(e) => e.key === 'Enter' && handleSearchClick()}
               />
             </div>
+            {/* 搜索按钮绑定 handleSearchClick */}
             <Button onClick={handleSearchClick} className="md:col-span-1">
               <Search className="mr-2 h-4 w-4" />
               搜索
             </Button>
             
-            {/* 下拉框 */}
             <Select value={selectedCollege} onValueChange={setSelectedCollege}>
               <SelectTrigger>
-                <SelectValue placeholder="所有学院" />
+                <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-muted-foreground" />
+                    <SelectValue placeholder="所有学院" />
+                </div>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">所有学院</SelectItem>
-                {COLLEGE_OPTIONS.map(c => (
+                <SelectItem value="all">所有学院 (跨专业)</SelectItem>
+                {collegeOptions.map(c => (
                   <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             
-            <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger>
-                <SelectValue placeholder="所有类型" />
-              </SelectTrigger>
+            <Select 
+              value={selectedType.toString()} 
+              onValueChange={(val) => setSelectedType(val === 'all' ? 'all' : Number(val))}
+            >
+              <SelectTrigger><SelectValue placeholder="所有类型" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">所有类型</SelectItem>
                 {COURSE_TYPE_OPTIONS.map(c => (
-                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  <SelectItem key={c.value} value={c.value.toString()}>{c.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
-            <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger>
-                <SelectValue placeholder="所有学年" />
-              </SelectTrigger>
+            <Select 
+              value={selectedYear.toString()} 
+              onValueChange={(val) => setSelectedYear(val === 'all' ? 'all' : Number(val))}
+            >
+              <SelectTrigger><SelectValue placeholder="所有学年" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">所有学年</SelectItem>
                 {YEAR_OPTIONS.map(c => (
-                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  <SelectItem key={c.value} value={c.value.toString()}>{c.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -348,22 +385,18 @@ export default function SearchPage() {
         </CardContent>
       </Card>
 
-      {/* --- 课程表格区域 (保持不变) --- */}
       <Card>
-        <CardHeader>
-          <CardTitle>课程列表</CardTitle>
-          <CardDescription>
-            {loading ? "正在加载课程..." : `共找到 ${displayedCourses.length} 门符合条件的课程`}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* DataTable 接收更新后的 columns，data 不变 */}
+        <CardContent className="pt-6">
           <CourseDataTable 
             columns={columns} 
-            data={displayedCourses} 
+            data={courses} 
             loading={loading} 
+            
+            rowCount={rowCount}
+            pagination={pagination}
+            onPaginationChange={setPagination}
           />
-          </CardContent>
+        </CardContent>
       </Card>
     </div>
   )

@@ -3,12 +3,12 @@
 export type UserRole = "student" | "admin" | null;
 
 export type CourseType =
-  | "通识课程"
-  | "专业必修课"
-  | "专业选修课"
-  | "共通教育课";
+  | 1
+  | 2
+  | 3
+  | 4;
 
-export type CourseYear = "大一" | "大二" | "大三" | "大四";
+export type CourseYear = 1 | 2 | 3 | 4;
 
 // --- 实体数据模型 ---
 export interface LoginResponseData {
@@ -74,7 +74,12 @@ export interface Student {
   major: string;
   year: CourseYear | string; // 兼容字符串或特定枚举
 }
-
+// 学院
+export interface College {
+  id: number | string; // 数据库ID
+  name: string;        // 显示名 (如: 信息工程学院)
+  code: string;        // 代号 (如: info, 用于筛选传参)
+}
 // --- API 响应结构 (预定义) ---
 
 /**

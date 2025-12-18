@@ -73,17 +73,17 @@ const data = {
       isActive: true,
       items: [
         { title: "Personal Info", url: "/admin/info" },
-        { title: "Password Change", url: "/admin/password" },
+        { title: "Password Change", url: "/admin/PwdChange" },
       ],
     },
     {
       title: "Course",
-      url: "/admin/courses",
+      url: "/admin",
       icon: BookOpen,
       isActive: true,
       items: [
-        { title: "Course List", url: "/admin/courses" }, 
-        { title: "Create Course", url: "/admin/courses/create" }, 
+        { title: "Course List", url: "/admin/courseSearch" }, 
+        { title: "Create Course", url: "/admin/courseCreate" }, 
       ],
     },
     {
