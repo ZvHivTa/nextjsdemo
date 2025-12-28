@@ -20,7 +20,6 @@ import { Button } from "@/components/ui/button"
 import { Search, ArrowUpDown, Loader2, Filter } from "lucide-react"
 import { toast } from "sonner"
 
-
 import { ColumnDef, PaginationState } from "@tanstack/react-table" 
 import { api } from "@/lib/api"
 import { ApiResponse, PaginatedResponse, Course, CourseType, CourseYear, College } from "@/types"
@@ -56,13 +55,13 @@ export default function SearchPage() {
   const [selectedYear, setSelectedYear] = useState<number | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // [新增] 分页状态管理
+  // [分页状态管理] TanStack Table 从 0 开始，PageHelper 从 1 开始
   const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0, // TanStack Table 从 0 开始
-    pageSize: 10, // 默认每页 10 条
+    pageIndex: 0, 
+    pageSize: 10, 
   });
   
-  // [新增] 总条数状态
+  // [总条数状态] 用于服务端分页计算总页数
   const [rowCount, setRowCount] = useState(0);
 
   const [loading, setLoading] = useState(true);
@@ -73,7 +72,6 @@ export default function SearchPage() {
   // --- 2. 初始化数据获取 ---
 
   const fetchColleges = useCallback(async () => {
-    // ... 代码保持不变 ...
     try {
       const res = await api.get<ApiResponse<College[]>>('/colleges');
       if (res.success) {
@@ -81,7 +79,7 @@ export default function SearchPage() {
         setCollegeOptions(options);
       }
     } catch (error) {
-       // ... 错误处理保持不变 ...
+       console.error("Fetch colleges failed:", error);
        setCollegeOptions([
         { value: "info", label: "信息工程学院 (Local)" },
         { value: "lang", label: "外国语学院 (Local)" },
@@ -90,14 +88,13 @@ export default function SearchPage() {
     }
   }, []);
 
-  // [核心修改] fetchCourses
+  // [核心] 获取课程数据
   const fetchCourses = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       
-      // [关键] 使用 pagination 状态构建参数
-      // 前端 pageIndex 是 0，后端 page 需要 1
+      // [关键] 分页参数转换：前端 pageIndex(0) -> 后端 page(1)
       params.append("page", (pagination.pageIndex + 1).toString());
       params.append("pageSize", pagination.pageSize.toString());
       
@@ -107,26 +104,26 @@ export default function SearchPage() {
       if (selectedYear !== "all") params.append("year", selectedYear.toString());
 
       const res = await api.get<ApiResponse<PaginatedResponse<Course>>>(`/student/search_courses?${params.toString()}`);
+      
       if (res.success) {
-        // 假设后端返回结构是 { data: { records: [], total: 100 } }
-        // 请根据实际后端字段调整，这里假设是 data.data (列表) 和 data.total (总数)
-        // 如果你的 ApiResponse 定义里 data 是 PaginatedResponse，那么通常列表在 .records 或 .list 里
+        // [修正] 类型安全的响应处理
+        const data = res.data as any; // 临时断言为 any 以方便读取不同字段名
         
-        // 假设 PaginatedResponse 结构为: { records: Course[], total: number }
-        // 如果你的后端直接把 List 放在 data 里，那这里要对应改。
-        // 根据之前的讨论，通常是：
-        const responseData = res.data; 
-        
-        // 这里做一个兼容性处理，视你 types 定义而定
-        if (Array.isArray(responseData)) {
-            // 如果后端没分页，直接返回了数组
-            setCourses(responseData);
-            setRowCount(responseData.length);
+        // 兼容处理：检查 records (PageHelper常见) 或 list (我们定义的)
+        const listData = data.records || data.list;
+
+        if (Array.isArray(listData)) {
+           setCourses(listData);
+           setRowCount(data.total || 0);
         } else {
-            // 标准分页结构
-            // 注意：检查你的 PaginatedResponse 类型定义，字段名可能是 list, records, rows 等
-            setCourses((responseData as any).records || (responseData as any).list || []);
-            setRowCount((responseData as any).total || 0);
+           // 兜底：如果后端直接返回了数组 (没有分页信息)
+           if (Array.isArray(data)) {
+               setCourses(data);
+               setRowCount(data.length);
+           } else {
+               setCourses([]);
+               setRowCount(0);
+           }
         }
       }
     } catch (error) {
@@ -135,10 +132,9 @@ export default function SearchPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedCollege, selectedType, selectedYear, pagination]); // 依赖 pagination
+  }, [searchQuery, selectedCollege, selectedType, selectedYear, pagination]); 
 
   const fetchMyCourses = useCallback(async () => {
-    // ... 代码保持不变 ...
     try {
       const res = await api.get<ApiResponse<Course[]>>('/student/my_courses');
       if (res.success) {
@@ -150,27 +146,24 @@ export default function SearchPage() {
     }
   }, []);
 
-  // [修改] 初始加载
+  // [修正] 初始加载
   useEffect(() => {
     fetchColleges();
     fetchMyCourses();
-    // 初始加载一次第一页
-    fetchCourses();
+    // 注意：删除了 fetchCourses() 的显式调用
+    // 因为下方的 useEffect[pagination] 会在组件挂载时（pagination初始赋值）自动执行一次
+    // 这样避免了 React 18 下的 Double Fetch 问题
+    
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
-  // [新增] 监听翻页事件
-  // 当用户点击“下一页”时，pagination 变了，自动触发 fetchCourses
-  // 注意：我们需要区分“是用户翻页”还是“用户重置了筛选”
-  // 但简单来说，只要 pagination 变了，就应该查新数据（只要 fetchCourses 里的筛选条件也是最新的）
+  // [分页监听] 当页码或页大小改变时，自动触发查询
   useEffect(() => {
-     // 这里我们利用 useEffect 来响应页码变化
-     // 为了避免初始加载时的重复调用（如果上面的 useEffect 已经调了一次），可以加个 ref 判断，或者简单地让它跑
      fetchCourses();
      // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination]); // 仅当页码/页大小变化时触发
+  }, [pagination]);
 
-  // 自动匹配年级逻辑 (保持不变)
+  // 自动匹配年级逻辑
   useEffect(() => {
     if (user && user.year) {
         const yearMap: Record<string, number> = { "大一": 1, "大二": 2, "大三": 3, "大四": 4 };
@@ -180,29 +173,26 @@ export default function SearchPage() {
     }
   }, [user]);
 
-
   // --- 3. 交互处理器 ---
   
-  // [关键修改] 点击搜索按钮逻辑
   const handleSearchClick = () => {
-    // 逻辑：
-    // 1. 如果当前不在第1页，重置回第1页 (这会触发上面的 useEffect[pagination]，从而自动调用 fetchCourses)
-    // 2. 如果当前已经在第1页，useEffect 不会触发，需要手动调用 fetchCourses
-    
+    // 如果不在第一页，切回第一页（会触发 Effect 自动搜索）
     if (pagination.pageIndex !== 0) {
         setPagination(prev => ({ ...prev, pageIndex: 0 }));
     } else {
+        // 如果已经在第一页，手动触发一次搜索
         fetchCourses();
     }
   };
 
   const handleSelectCourse = async (course: Course) => {
-    // ... 保持不变 ...
     setProcessingId(course.id);
     try {
-      await api.post<ApiResponse<null>>('/student/enroll', { courseId: course.id });
+      await api.post<ApiResponse<null>>('/student/select', { courseId: course.id });
       toast.success("选课成功", { description: `已选择：${course.name}` });
       setMyCourseIds(prev => new Set(prev).add(course.id));
+      // 选课成功后，更新一下当前列表（刷新人数）
+      fetchCourses(); 
     } catch (error: any) {
       toast.error("选课失败", { description: error.message });
     } finally {
@@ -211,7 +201,6 @@ export default function SearchPage() {
   };
 
   const handleWithdrawCourse = async (course: Course) => {
-    // ... 保持不变 ...
     setProcessingId(course.id);
     try {
       await api.post<ApiResponse<null>>('/student/withdraw', { courseId: course.id });
@@ -221,6 +210,7 @@ export default function SearchPage() {
         next.delete(course.id);
         return next;
       });
+      fetchCourses();
     } catch (error: any) {
       toast.error("退课失败", { description: error.message });
     } finally {
@@ -228,9 +218,8 @@ export default function SearchPage() {
     }
   };
 
-  // --- 4. 列定义 (保持不变) ---
+  // --- 4. 列定义 ---
   const columns = useMemo<ColumnDef<Course>[]>(() => [
-      // ... 保持不变 ...
       { 
         accessorKey: "name", 
         header: ({ column }) => (
@@ -242,36 +231,43 @@ export default function SearchPage() {
       },
       { accessorKey: "teacher", header: "教师", id: "teacher" },
       { accessorKey: "credit", header: "学分", id: "credit" },
-       { accessorKey: "subjectName", header: "专业", id: "subjectName" },
-        { accessorKey: "collegeName", header: "学院", id: "collegeName" },
+      { accessorKey: "subjectName", header: "专业", id: "subjectName" },
+      { accessorKey: "collegeName", header: "学院", id: "collegeName" },
       { 
         accessorKey: "type", 
         header: "类型", 
         cell: ({ row }) => {
           const val = row.original.type;
-          const option = COURSE_TYPE_OPTIONS.find(o => o.value === val);
+          const option = COURSE_TYPE_OPTIONS.find(o => o.value === Number(val));
           return option ? option.label : val;
         }
       },
       { accessorKey: "time", header: "时间", id: "time" },
       { accessorKey: "place", header: "上课地点", id: "place" },
-      { accessorKey: "capactity", 
+      { 
+        // [修正] 这里之前是 capactity，已修正为 capacity
+        accessorKey: "capacity", 
         header: "容量", 
         cell: ({ row }) => {
-        const isFull = row.original.chosenNumber >= row.original.capacity;
-        return (
-          <span className={isFull ? "font-bold text-destructive" : ""}>
-            {row.original.chosenNumber} / {row.original.capacity}
-          </span>
-        )
-      } },
+          // 注意：后端映射是 chosenNumber
+          const current = row.original.chosenNumber || 0;
+          const cap = row.original.capacity;
+          const isFull = current >= cap;
+          
+          return (
+            <span className={isFull ? "font-bold text-destructive" : ""}>
+              {current} / {cap}
+            </span>
+          )
+        } 
+      },
       { 
           id: "actions", 
           header: "操作",
           cell: ({ row }) => {
             const course = row.original;
             const isSelected = myCourseIds.has(course.id);
-            const isFull = course.enrolled >= course.capacity;
+            const isFull = (course.chosenNumber || 0) >= course.capacity;
             const isProcessing = processingId === course.id;
 
             if (isSelected) {
@@ -334,7 +330,7 @@ export default function SearchPage() {
                 onKeyDown={(e) => e.key === 'Enter' && handleSearchClick()}
               />
             </div>
-            {/* 搜索按钮绑定 handleSearchClick */}
+            
             <Button onClick={handleSearchClick} className="md:col-span-1">
               <Search className="mr-2 h-4 w-4" />
               搜索

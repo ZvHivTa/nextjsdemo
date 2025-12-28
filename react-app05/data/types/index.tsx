@@ -87,10 +87,11 @@ export interface College {
  * 用于列表查询接口
  */
 export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
+  total: number;       // 总记录数
+  list: T[];           // 列表数据 (PageHelper 默认字段通常叫 list 或 rows)
+  pageNum?: number;    // 当前页
+  pageSize?: number;   // 每页大小
+  pages?: number;      // 总页数
 }
 
 // API 响应包装器 (API Wrappers)
