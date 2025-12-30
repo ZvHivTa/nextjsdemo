@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner" // 引入 Toast
 
 import {
   Card,
@@ -32,53 +33,50 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Loader2 } from "lucide-react"
-import { CourseType, CourseYear } from "@/data/types"
+import { api } from "@/lib/api"
+import { ApiResponse, College } from "@/types"
 
-
-
-const COLLEGE_OPTIONS = [
-  { value: "info", label: "信息工程学院" },
-  { value: "lang", label: "外国语学院" },
-  { value: "art", label: "艺术设计学院" },
+// --- 1. 常量定义 (保持与后端一致) ---
+// 注意：value 改为了数字的字符串形式，方便后端转换
+const COURSE_TYPE_OPTIONS = [
+  { value: '1', label: '通识选修课' },
+  { value: '2', label: '专业必修课' },
+  { value: '3', label: '专业选修课' },
+  { value: '4', label: '通识必修课' },
 ];
 
-const COURSE_TYPE_OPTIONS: { value: CourseType, label: string }[] = [
-  { value: '通识课程', label: '通识课程' },
-  { value: '专业必修课', label: '专业必修课' },
-  { value: '专业选修课', label: '专业选修课' },
-  { value: '共通教育课', label: '共通教育课' },
-];
-const YEAR_OPTIONS: { value: CourseYear, label: string }[] = [
-  { value: '大一', label: '大一' },
-  { value: '大二', label: '大二' },
-  { value: '大三', label: '大三' },
-  { value: '大四', label: '大四' },
+const YEAR_OPTIONS = [
+  { value: '1', label: '大一' },
+  { value: '2', label: '大二' },
+  { value: '3', label: '大三' },
+  { value: '4', label: '大四' },
 ];
 
-// --- 2. 为 "创建" 定义 Zod Schema ---
-// (这与 admin/courses/page.tsx 中的 schema 几乎一样，
-//  但移除了 id 和 enrolled，因为这些是后端生成的)
+// --- 2. Zod Schema ---
 const createCourseSchema = z.object({
   name: z.string().min(2, { message: "课程名称至少2个字符" }),
   teacher: z.string().min(2, { message: "教师姓名至少2个字符" }),
   time: z.string().min(1, { message: "必须填写上课时间" }),
-  location: z.string().min(1, { message: "必须填写上课地点" }),
-  credits: z.coerce.number().min(0, { message: "学分不能为负" }),
+  
+  // [修改] 字段名 location -> place
+  place: z.string().min(1, { message: "必须填写上课地点" }),
+  
+  // [修改] 字段名 credits -> credit
+  credit: z.coerce.number().min(0.5, { message: "学分至少0.5" }),
   capacity: z.coerce.number().int().min(1, { message: "容量必须大于0" }),
-  type: z.enum(['通识课程', '专业必修课', '专业选修课', '共通教育课'], {
-    required_error: "必须选择课程类型",
-  }),
-  year: z.enum(['大一', '大二', '大三', '大四'], {
-    required_error: "必须选择学年",
-  }),
-  college: z.string({ required_error: "必须选择学院" }).min(1),
-  // 课程ID (id) 将由后端在创建时生成
-  // 已选人数 (enrolled) 默认为 0
+  
+  // 类型和学年：先存字符串，提交时转数字
+  type: z.string({ required_error: "必须选择课程类型" }),
+  year: z.string({ required_error: "必须选择学年" }),
+  
+  // [修改] 字段名 college -> collegeId
+  collegeId: z.string({ required_error: "必须选择学院" }).min(1),
 });
 
 export default function CreateCoursePage() {
   const [loading, setLoading] = useState(false);
-  const router = useRouter(); // 用于成功后跳转
+  const [collegeOptions, setCollegeOptions] = useState<{ value: string, label: string }[]>([]);
+  const router = useRouter(); 
 
   // --- 3. 初始化表单 ---
   const form = useForm<z.infer<typeof createCourseSchema>>({
@@ -87,70 +85,71 @@ export default function CreateCoursePage() {
       name: "",
       teacher: "",
       time: "",
-      location: "",
-      credits: 0,
+      place: "",
+      credit: 2, // 默认学分可以设为2
       capacity: 50,
-      // (Selects 需要一个 undefined 初始值才能显示 placeholder)
       type: undefined,
       year: undefined,
-      college: undefined,
+      collegeId: undefined,
     },
   });
 
-  //TODO: 创建课程
-  const onSubmit = (values: z.infer<typeof createCourseSchema>) => {
+  // --- 4. 获取学院列表 ---
+  useEffect(() => {
+    const fetchColleges = async () => {
+      try {
+        const res = await api.get<ApiResponse<College[]>>('/colleges');
+        if (res.success) {
+          // 【关键修复】确保 value 是字符串，防止数字ID导致Select不显示
+          setCollegeOptions(res.data.map(c => ({ value: c.id.toString(), label: c.name })));
+        }
+      } catch (error) {
+        console.error("Fetch colleges failed", error);
+        toast.error("加载学院数据失败");
+      }
+    };
+    fetchColleges();
+  }, []);
+
+  // --- 5. 提交逻辑 ---
+  const onSubmit = async (values: z.infer<typeof createCourseSchema>) => {
     setLoading(true);
     
-    // (在真实应用中, 'id' 和 'enrolled' 会在后端添加)
-    const newCourseData = {
-      ...values,
-      id: `C${Math.floor(Math.random() * 1000)}`, // 模拟生成 ID
-      enrolled: 0,
-    };
-    
-    console.log("API调用: POST /api/courses", newCourseData);
-    
-    // 模拟网络请求
-    setTimeout(() => {
-      setLoading(false);
-      // (可选: 显示一个 "创建成功" 的 Toast)
+    try {
+      // 构造 Payload，进行类型转换
+      const payload = {
+        ...values,
+        type: Number(values.type),
+        year: Number(values.year),
+        // id 和 chosenNumber 由后端处理
+      };
       
-      // 成功后重置表单
-      form.reset();
+      // 真实调用
+      await api.post('/admin/course/insert', payload);
       
-      // (可选: 跳转回课程列表页)
-      // router.push("/admin/courses");
+      toast.success("课程创建成功");
+      form.reset(); // 重置表单
 
-      //根据返回的数据判断成功还是失败
-      // if (isSubmitting) {
-      //     toast.success("选课成功", {
-      //       position:'top-center',
-      //       description: "成功选择xx课程",
-      //     });
-      // }else{
-      //   toast.error("选课失败", {
-      //       position:'top-center',
-      //       description: "",
-      //   });
-      //   return;
-      // }
-    }, 1500);
+    } catch (error: any) {
+      console.error("Create course failed", error);
+      toast.error("创建失败", { description: error.message });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    // 使用 max-w-4xl 将表单限制在合理宽度，使其更易读
       <Card>
         <CardHeader>
           <CardTitle>新建课程</CardTitle>
           <CardDescription>
-            填写所有必填字段以创建一门新课程。
+            填写下面的表单以录入一门新课程到系统中。
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               
-              {/* 使用 grid 布局来排列表单 */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
                 {/* 课程名称 */}
@@ -192,10 +191,10 @@ export default function CreateCoursePage() {
                   )}
                 />
 
-                {/* 上课地点 */}
+                {/* 上课地点 (修正为 place) */}
                 <FormField
                   control={form.control}
-                  name="location"
+                  name="place"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>上课地点 *</FormLabel>
@@ -205,10 +204,10 @@ export default function CreateCoursePage() {
                   )}
                 />
 
-                {/* 学分 */}
+                {/* 学分 (修正为 credit) */}
                 <FormField
                   control={form.control}
-                  name="credits"
+                  name="credit"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>学分 *</FormLabel>
@@ -231,19 +230,29 @@ export default function CreateCoursePage() {
                   )}
                 />
 
-                {/* 开设学院 */}
+                {/* 开设学院 (动态加载) */}
                 <FormField
                   control={form.control}
-                  name="college"
+                  name="collegeId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>开设学院 *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      {/* 【关键修复】
+                          1. key={collegeOptions.length}：当选项加载完成时，强制重新渲染组件，解决异步加载导致的空白问题。
+                          2. value={field.value}：受控绑定。
+                      */}
+                      <Select 
+                        key={collegeOptions.length} 
+                        onValueChange={field.onChange} 
+                        value={field.value}
+                      >
                         <FormControl>
-                          <SelectTrigger><SelectValue placeholder="选择一个学院" /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue placeholder="选择一个学院" />
+                          </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {COLLEGE_OPTIONS.map(c => (
+                          {collegeOptions.map(c => (
                             <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                           ))}
                         </SelectContent>
@@ -253,16 +262,18 @@ export default function CreateCoursePage() {
                   )}
                 />
 
-                {/* 课程类型 */}
+                {/* 课程类型 (修正 Value) */}
                 <FormField
                   control={form.control}
                   name="type"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>课程类型 *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger><SelectValue placeholder="选择课程类型" /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue placeholder="选择课程类型" />
+                          </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {COURSE_TYPE_OPTIONS.map(c => (
@@ -282,9 +293,11 @@ export default function CreateCoursePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>开设学年 *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger><SelectValue placeholder="选择开设学年" /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue placeholder="选择开设学年" />
+                          </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {YEAR_OPTIONS.map(c => (
@@ -299,12 +312,17 @@ export default function CreateCoursePage() {
 
               </div>
               
-              {/* 提交按钮 */}
-              <div className="flex justify-end pt-4">
+              <div className="flex justify-end pt-4 gap-4">
+                <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => form.reset()}
+                    disabled={loading}
+                >
+                    重置
+                </Button>
                 <Button type="submit" disabled={loading} className="w-full md:w-auto">
-                  {loading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   确认创建
                 </Button>
               </div>

@@ -45,102 +45,53 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  ArrowUpDown,
   Search,
   UserCheck,
   Plus,
   Trash2,
   BookOpen,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
 // 引入组件
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StudentDataTable } from "@/components/app-dashborad/student-table";
-import { Course, Student } from "@/data/types";
+import { Course, Student, ApiResponse, PaginatedResponse, College } from "@/types";
+import { api } from "@/lib/api";
 
-
-// --- 模拟数据 ---
-const MOCK_ALL_STUDENTS: Student[] = [
-  {
-    id: "20210001",
-    name: "张三",
-    college: "信息工程学院",
-    major: "计算机科学",
-    year: "大三",
-  },
-  {
-    id: "20210002",
-    name: "李四",
-    college: "信息工程学院",
-    major: "软件工程",
-    year: "大三",
-  },
-  {
-    id: "20220001",
-    name: "王五",
-    college: "外国语学院",
-    major: "英语",
-    year: "大二",
-  },
-  {
-    id: "20230001",
-    name: "赵六",
-    college: "艺术设计学院",
-    major: "视觉传达",
-    year: "大一",
-  },
-  {
-    id: "20230002",
-    name: "钱七",
-    college: "艺术设计学院",
-    major: "环境设计",
-    year: "大一",
-  },
+// 简单的专业映射（实际项目中建议从后端获取 /api/subjects?collegeId=...）
+const MAJOR_OPTIONS = [
+  { value: "1", label: "计算机科学与技术" },
+  { value: "2", label: "软件工程" },
+  { value: "3", label: "英语" },
 ];
 
-const MOCK_ALL_COURSES: Course[] = [
-  { id: "C001", name: "高等数学A", teacher: "王教授", credits: 4.0 },
-  { id: "C003", name: "数据结构", teacher: "刘博士", credits: 4.0 },
-  { id: "C006", name: "计算机网络", teacher: "赵教授", credits: 4.0 },
-  { id: "C002", name: "大学英语", teacher: "李老师", credits: 3.0 },
-  { id: "C005", name: "设计素描", teacher: "陈老师", credits: 2.0 },
-];
-
-const MOCK_ENROLLMENTS: Record<string, Set<string>> = {
-  "20210001": new Set(["C003", "C006"]),
-  "20210002": new Set(["C003"]),
-  "20220001": new Set(["C002"]),
-  "20230001": new Set([]),
-};
-
-// 选项数据
 const COLLEGE_OPTIONS = [
   { value: "info", label: "信息工程学院" },
-  { value: "lang", label: "外国语学院" },
-  { value: "art", label: "艺术设计学院" },
-];
-
-// 简单的专业映射（实际项目中应根据学院联动）
-const MAJOR_OPTIONS = [
-  { value: "cs", label: "计算机科学" },
-  { value: "se", label: "软件工程" },
-  { value: "eng", label: "英语" },
-  { value: "jap", label: "日语" },
-  { value: "vis", label: "视觉传达" },
-  { value: "env", label: "环境设计" },
 ];
 
 export default function AdminStudentsPage() {
-  // --- 主页面状态 ---
-  const [loadingStudents, setLoadingStudents] = useState(true);
-  const [displayedStudents, setDisplayedStudents] = useState<Student[]>([]);
-
-  // 筛选状态
+  // --- 状态管理 ---
+  
+  // 1. 筛选条件
   const [studentSearchQuery, setStudentSearchQuery] = useState("");
   const [studentCollege, setStudentCollege] = useState("all");
-  const [studentMajor, setStudentMajor] = useState("all"); // 新增专业筛选
+  
+  // 2. 列表数据 & 分页
+  const [loadingStudents, setLoadingStudents] = useState(true);
+  const [displayedStudents, setDisplayedStudents] = useState<Student[]>([]);
+  const [rowCount, setRowCount] = useState(0);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  
+  // 3. 动态选项 (学院)
+  const [collegeOptions, setCollegeOptions] = useState<{value: string, label: string}[]>([]);
 
   // --- 管理模态框状态 ---
   const [isManageDialogOpen, setIsManageDialogOpen] = useState(false);
@@ -151,111 +102,127 @@ export default function AdminStudentsPage() {
   // --- 加课/退课 交互状态 ---
   const [courseIdInput, setCourseIdInput] = useState("");
   const [foundCourseToAdd, setFoundCourseToAdd] = useState<Course | null>(null);
+  const [isSearchingCourse, setIsSearchingCourse] = useState(false);
 
-  const [confirmAction, setConfirmAction] = useState<"add" | "remove" | null>(
-    null
-  );
+  const [confirmAction, setConfirmAction] = useState<"add" | "remove" | null>(null);
   const [targetCourse, setTargetCourse] = useState<Course | null>(null);
 
-  // --- 1. 主页面 API: 搜索学生 ---
-  const runStudentSearch = useCallback(
-    (query: string, college: string, major: string) => {
-      setLoadingStudents(true);
-      // 模拟后端延迟
-      new Promise((res) => setTimeout(res, 500)).then(() => {
-        let students = MOCK_ALL_STUDENTS;
-
-        // 后端逻辑模拟：文本模糊查询
-        if (query) {
-          const lowerQuery = query.toLowerCase();
-          students = students.filter(
-            (s) =>
-              s.name.toLowerCase().includes(lowerQuery) ||
-              s.id.includes(lowerQuery)
-          );
-        }
-
-        // 后端逻辑模拟：学院筛选
-        if (college !== "all") {
-          // 这里简单匹配 label，实际应匹配 value
-          const label = COLLEGE_OPTIONS.find((c) => c.value === college)?.label;
-          if (label) {
-            students = students.filter((s) => s.college === label);
-          }
-        }
-
-        // 后端逻辑模拟：专业筛选
-        if (major !== "all") {
-          const label = MAJOR_OPTIONS.find((m) => m.value === major)?.label;
-          if (label) {
-            students = students.filter((s) => s.major === label);
-          }
-        }
-
-        setDisplayedStudents(students);
-        setLoadingStudents(false);
-      });
-    },
-    []
-  );
-
-  // 初始加载
+  // --- 初始化: 获取学院列表 ---
   useEffect(() => {
-    runStudentSearch("", "all", "all");
-  }, [runStudentSearch]);
-
-  // 处理搜索点击
-  const handleSearchClick = () => {
-    runStudentSearch(studentSearchQuery, studentCollege, studentMajor);
-  };
-
-  // --- 2. 管理功能 API (保持不变) ---
-  const handleOpenManage = (student: Student) => {
-    setSelectedStudent(student);
-    setIsManageDialogOpen(true);
-    setIsCoursesLoading(true);
-    setCourseIdInput("");
-    setFoundCourseToAdd(null);
-
-    new Promise((res) => setTimeout(res, 400)).then(() => {
-      const enrolledIds = MOCK_ENROLLMENTS[student.id] || new Set();
-      const courses = MOCK_ALL_COURSES.filter((c) => enrolledIds.has(c.id));
-      setStudentCourses(courses);
-      setIsCoursesLoading(false);
-    });
-  };
-
-  const handleSearchCourseById = () => {
-    if (!courseIdInput.trim()) return;
-    const course = MOCK_ALL_COURSES.find(
-      (c) => c.id.toLowerCase() === courseIdInput.toLowerCase()
-    );
-
-    if (course) {
-      const isAlreadyEnrolled = studentCourses.some((c) => c.id === course.id);
-      if (isAlreadyEnrolled) {
-        toast.warning("无法添加", {
-          description: `学生已选修课程：${course.name} (${course.id})`,
-          position: "top-center",
-        });
-        setFoundCourseToAdd(null);
-      } else {
-        setFoundCourseToAdd(course);
-        toast.info("找到课程", {
-          description: `${course.name} - ${course.teacher}`,
-          position: "top-center",
-        });
+    const fetchColleges = async () => {
+      try {
+        const res = await api.get<ApiResponse<College[]>>('/colleges');
+        if (res.success) {
+          setCollegeOptions(res.data.map(c => ({ value: c.id.toString(), label: c.name })));
+        }
+      } catch (error) {
+        console.error("Failed to fetch colleges");
       }
+    };
+    fetchColleges();
+  }, []);
+
+  // --- 1. 主页面 API: 搜索学生 ---
+  const fetchStudents = useCallback(async () => {
+    setLoadingStudents(true);
+    try {
+      const params = new URLSearchParams();
+      params.append("page", (pagination.pageIndex + 1).toString());
+      params.append("pageSize", pagination.pageSize.toString());
+      
+      if (studentSearchQuery) params.append("keyword", studentSearchQuery);
+      if (studentCollege !== "all") params.append("collegeId", studentCollege);
+      
+      const res = await api.get<ApiResponse<PaginatedResponse<Student>>>(`/admin/student/search?${params.toString()}`);
+      
+      if (res.success) {
+        const data = res.data as any;
+        const list = data.records || data.list || [];
+        setDisplayedStudents(list);
+        setRowCount(data.total || 0);
+      }
+    } catch (error) {
+      console.error("Fetch students failed", error);
+      toast.error("获取学生列表失败");
+    } finally {
+      setLoadingStudents(false);
+    }
+  }, [pagination, studentSearchQuery, studentCollege]);
+
+  // 监听变化自动刷新
+  useEffect(() => {
+    fetchStudents();
+  }, [fetchStudents]);
+
+  const handleSearchClick = () => {
+    if (pagination.pageIndex !== 0) {
+      setPagination(p => ({ ...p, pageIndex: 0 }));
     } else {
-      toast.error("未找到课程", {
-        description: `系统中不存在 ID 为 "${courseIdInput}" 的课程`,
-        position: "top-center",
-      });
-      setFoundCourseToAdd(null);
+      fetchStudents(); // 强制刷新
     }
   };
 
-  // --- 3. 确认操作流程 (保持不变) ---
+  // --- 分页计算逻辑 ---
+  const totalPages = Math.max(1, Math.ceil(rowCount / pagination.pageSize));
+  const isFirstPage = pagination.pageIndex === 0;
+  const isLastPage = pagination.pageIndex >= totalPages - 1;
+
+  // --- 2. 管理功能 API ---
+  
+  // 获取该学生的已选课程
+  const fetchStudentCourses = async (studentId: string) => {
+    setIsCoursesLoading(true);
+    try {
+      const res = await api.get<ApiResponse<Course[]>>(`/admin/student/selectedCourse/${studentId}`);
+      if (res.success) {
+        setStudentCourses(res.data);
+      }
+    } catch (error) {
+      toast.error("获取选课记录失败");
+    } finally {
+      setIsCoursesLoading(false);
+    }
+  };
+
+  const handleOpenManage = (student: Student) => {
+    setSelectedStudent(student);
+    setIsManageDialogOpen(true);
+    setCourseIdInput("");
+    setFoundCourseToAdd(null);
+    
+    // 加载该学生的课
+    fetchStudentCourses(student.id);
+  };
+
+  // 搜索要添加的课程 (按ID精确查找)
+  const handleSearchCourseById = async () => {
+    if (!courseIdInput.trim()) return;
+    setIsSearchingCourse(true);
+    setFoundCourseToAdd(null);
+
+    try {
+      const res = await api.get<ApiResponse<Course>>(`/admin/course/search/${courseIdInput.trim()}`);
+      
+      if (res.success && res.data) {
+        const course = res.data;
+        const isAlreadyEnrolled = studentCourses.some(c => c.id === course.id);
+        if (isAlreadyEnrolled) {
+          toast.warning("无法添加", { description: "该学生已选修此课程" });
+        } else {
+          setFoundCourseToAdd(course);
+          toast.info("找到课程", { description: course.name });
+        }
+      } else {
+        toast.error("未找到课程", { description: "课程ID不存在" });
+      }
+    } catch (error) {
+      toast.error("查找失败", { description: "请检查课程ID是否正确" });
+    } finally {
+      setIsSearchingCourse(false);
+    }
+  };
+
+  // --- 3. 确认操作流程 ---
   const initiateAddCourse = () => {
     if (!foundCourseToAdd) return;
     setTargetCourse(foundCourseToAdd);
@@ -267,35 +234,34 @@ export default function AdminStudentsPage() {
     setConfirmAction("remove");
   };
 
-  const handleConfirmAction = () => {
+  const handleConfirmAction = async () => {
     if (!selectedStudent || !targetCourse || !confirmAction) return;
 
-    const studentName = selectedStudent.name;
-    const courseName = targetCourse.name;
+    try {
+      const payload = {
+        studentId: Number(selectedStudent.id),
+        courseId: Number(targetCourse.id)
+      };
 
-    if (confirmAction === "add") {
-      console.log(`API: Add ${targetCourse.id} to ${selectedStudent.id}`);
-      setStudentCourses((prev) => [...prev, targetCourse]);
-      MOCK_ENROLLMENTS[selectedStudent.id].add(targetCourse.id);
-      toast.success("选课成功", {
-        description: `已为 ${studentName} 添加课程：${courseName}`,
-        position: "top-center",
+      if (confirmAction === "add") {
+        await api.post('/admin/student/select', payload);
+        toast.success("添加成功", { description: `已为 ${selectedStudent.name} 选课` });
+        fetchStudentCourses(selectedStudent.id);
+        setFoundCourseToAdd(null);
+        setCourseIdInput("");
+      } else {
+        await api.post('/admin/student/withdraw', payload);
+        toast.success("退课成功");
+        fetchStudentCourses(selectedStudent.id);
+      }
+    } catch (error: any) {
+      toast.error(confirmAction === "add" ? "选课失败" : "退课失败", {
+        description: error.message || "操作被拒绝"
       });
-      setFoundCourseToAdd(null);
-      setCourseIdInput("");
-    } else {
-      console.log(`API: Remove ${targetCourse.id} from ${selectedStudent.id}`);
-      setStudentCourses((prev) =>
-        prev.filter((c) => c.id !== targetCourse!.id)
-      );
-      MOCK_ENROLLMENTS[selectedStudent.id].delete(targetCourse.id);
-      toast.success("退课成功", {
-        description: `已将 ${courseName} 从 ${studentName} 的课表中移除`,
-        position: "top-center",
-      });
+    } finally {
+      setConfirmAction(null);
+      setTargetCourse(null);
     }
-    setConfirmAction(null);
-    setTargetCourse(null);
   };
 
   // --- 4. 列定义 ---
@@ -303,9 +269,21 @@ export default function AdminStudentsPage() {
     () => [
       { accessorKey: "id", header: "学号", id: "学号" },
       { accessorKey: "name", header: "姓名", id: "姓名" },
-      { accessorKey: "college", header: "学院", id: "学院" },
-      { accessorKey: "major", header: "专业", id: "专业" },
-      { accessorKey: "year", header: "年级", id: "年级" },
+      { 
+        accessorKey: "collegeName", 
+        header: "学院", 
+        id: "学院" 
+      },
+      { 
+        accessorKey: "subjectName", 
+        header: "专业", 
+        id: "专业" 
+      },
+      { 
+        accessorKey: "year",   
+        header: "年级", 
+        id: "年级" 
+      },
       {
         id: "actions",
         header: "操作",
@@ -332,10 +310,8 @@ export default function AdminStudentsPage() {
           <CardDescription>检索学生并进行人工选课或退课操作。</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* 使用 grid 布局优化筛选区 */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            {/* 文本模糊搜索 - 占据较宽空间 */}
-            <div className="md:col-span-4 relative">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="搜索学号或姓名..."
@@ -346,15 +322,14 @@ export default function AdminStudentsPage() {
               />
             </div>
 
-            {/* 学院筛选 - 占据中等空间 */}
-            <div className="md:col-span-3">
+            <div className="w-[200px]">
               <Select value={studentCollege} onValueChange={setStudentCollege}>
                 <SelectTrigger>
                   <SelectValue placeholder="所有学院" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">所有学院</SelectItem>
-                  {COLLEGE_OPTIONS.map((c) => (
+                  {collegeOptions.map((c) => (
                     <SelectItem key={c.value} value={c.value}>
                       {c.label}
                     </SelectItem>
@@ -363,56 +338,42 @@ export default function AdminStudentsPage() {
               </Select>
             </div>
 
-            {/* 专业筛选 - 占据中等空间 */}
-            <div className="md:col-span-3">
-              <Select value={studentMajor} onValueChange={setStudentMajor}>
-                <SelectTrigger>
-                  <SelectValue placeholder="所有专业" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">所有专业</SelectItem>
-                  {MAJOR_OPTIONS.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>
-                      {m.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 搜索按钮 - 占据剩余空间 */}
-            <div className="md:col-span-2">
-              <Button onClick={handleSearchClick} className="w-full">
-                <Search className="mr-2 h-4 w-4" /> 搜索
-              </Button>
-            </div>
+            <Button onClick={handleSearchClick}>
+              <Search className="mr-2 h-4 w-4" /> 搜索
+            </Button>
           </div>
         </CardContent>
       </Card>
 
       {/* 主页面：学生列表 */}
       <Card>
-        {/* 移除 p-0，使用默认 padding，解决贴边问题 */}
         <CardContent>
           <StudentDataTable
             columns={studentColumns}
             data={displayedStudents}
             loading={loadingStudents}
+            
+            // 服务端分页
+            rowCount={rowCount}
+            pagination={pagination}
+            onPaginationChange={setPagination}
           />
+
+          
         </CardContent>
       </Card>
 
-      {/* --- 管理模态框 (Dialog) (保持不变) --- */}
+      {/* --- 管理模态框 (Dialog) --- */}
       <Dialog open={isManageDialogOpen} onOpenChange={setIsManageDialogOpen}>
         <DialogContent className="sm:max-w-[900px]">
           <DialogHeader>
             <DialogTitle className="text-xl">选课管理控制台</DialogTitle>
             <DialogDescription>
               正在操作学生：
-              <span className="font-bold text-primary">
+              <span className="font-bold text-primary mx-1">
                 {selectedStudent?.name}
-              </span>{" "}
-              ({selectedStudent?.id}) | {selectedStudent?.major}
+              </span>
+              ({selectedStudent?.id}) | {selectedStudent?.subjectName}
             </DialogDescription>
           </DialogHeader>
 
@@ -430,19 +391,18 @@ export default function AdminStudentsPage() {
 
               <div className="flex gap-2">
                 <Input
-                  placeholder="课程ID (如 C001)"
+                  placeholder="ID (如 6001)"
                   value={courseIdInput}
                   onChange={(e) => setCourseIdInput(e.target.value)}
-                  onKeyDown={(e) =>
-                    e.key === "Enter" && handleSearchCourseById()
-                  }
+                  onKeyDown={(e) => e.key === "Enter" && handleSearchCourseById()}
                 />
                 <Button
                   size="icon"
                   variant="secondary"
                   onClick={handleSearchCourseById}
+                  disabled={isSearchingCourse}
                 >
-                  <Search className="w-4 h-4" />
+                  {isSearchingCourse ? <Loader2 className="w-4 h-4 animate-spin"/> : <Search className="w-4 h-4" />}
                 </Button>
               </div>
 
@@ -453,10 +413,10 @@ export default function AdminStudentsPage() {
                     <div className="font-bold text-sm">
                       {foundCourseToAdd.name}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground space-y-1">
                       <p>ID: {foundCourseToAdd.id}</p>
                       <p>教师: {foundCourseToAdd.teacher}</p>
-                      <p>学分: {foundCourseToAdd.credits}</p>
+                      <p>学分: {foundCourseToAdd.credit}</p>
                     </div>
                     <Button
                       size="sm"
@@ -518,7 +478,7 @@ export default function AdminStudentsPage() {
                             {course.name}
                           </TableCell>
                           <TableCell>{course.teacher}</TableCell>
-                          <TableCell>{course.credits}</TableCell>
+                          <TableCell>{course.credit}</TableCell>
                           <TableCell className="text-right">
                             <Button
                               variant="ghost"
@@ -546,7 +506,7 @@ export default function AdminStudentsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* --- 全局确认框 (Alert Dialog) (保持不变) --- */}
+      {/* --- 全局确认框 (Alert Dialog) --- */}
       <AlertDialog
         open={!!confirmAction}
         onOpenChange={(open) => !open && setConfirmAction(null)}
@@ -568,7 +528,9 @@ export default function AdminStudentsPage() {
               </span>{" "}
               吗？
               <br />
-              此操作将直接修改数据库记录。
+              <span className="text-red-500 text-xs mt-2 block">
+                注意：管理员操作将绕过部分选课规则（如人数限制）。
+              </span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

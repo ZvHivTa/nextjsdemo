@@ -70,6 +70,6 @@ export const api = {
   put: <T>(endpoint: string, body: any, options?: RequestOptions) => 
     request<T>(endpoint, { ...options, method: "PUT", body }),
     
-  del: <T>(endpoint: string, options?: RequestOptions) => 
+  delete: <T>(endpoint: string, options?: RequestOptions) => 
     request<T>(endpoint, { ...options, method: "DELETE" }),
 };

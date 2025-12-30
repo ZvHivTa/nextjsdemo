@@ -2,6 +2,8 @@
 
 import {
   ColumnDef,
+  OnChangeFn,
+  PaginationState,
   SortingState,
   VisibilityState,
   flexRender,
@@ -34,6 +36,10 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   loading: boolean
+  // --- 新增参数 ---
+  rowCount: number          // 后端返回的总记录数 (total)
+  pagination: PaginationState // 当前的分页状态 { pageIndex, pageSize }
+  onPaginationChange: OnChangeFn<PaginationState> // 分页改变时的回调
 }
 
 // 1. 重命名组件为 StudentDataTable
@@ -41,28 +47,29 @@ export function StudentDataTable<TData, TValue>({
   columns,
   data,
   loading,
+  rowCount,
+  pagination,
+  onPaginationChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
 
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    state: {
-      sorting,
-      columnVisibility,
-    },
-    initialState: {
-      pagination: {
-        pageSize: 10,
+   const table = useReactTable({
+      data,
+      columns,
+      getCoreRowModel: getCoreRowModel(),
+      
+      // --- 核心修改：开启服务端分页模式 ---
+      manualPagination: true, // 告诉表格：不用你自己切片，我给你的数据已经是切好的
+      rowCount: rowCount,     // 告诉表格：虽然我只给了你10条，但数据库里实际有 rowCount 条
+      
+      // --- 状态受控 ---
+      state: {
+        pagination,
       },
-    },
-  })
+      onPaginationChange: onPaginationChange,
+    })
+  
 
   // 渲染骨架屏
   const renderSkeletons = () => {
@@ -160,30 +167,31 @@ export function StudentDataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-
-      {/* 分页 */}
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {/* 3. 更新提示文本 */}
-          共 {table.getFilteredRowModel().rows.length} 名学生
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          上一页
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          下一页
-        </Button>
-      </div>
+      {/* 分页控制 */}
+        {/* 分页控制 */}
+              <div className="flex items-center justify-end space-x-2 py-4">
+                <div className="flex-1 text-sm text-muted-foreground">
+                  {/* 这里直接使用传入的 rowCount */}
+                  共 {rowCount} 条课程 
+                  (第 {pagination.pageIndex + 1} 页 / 共 {table.getPageCount()} 页)
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
+                >
+                  上一页
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
+                >
+                  下一页
+                </Button>
+              </div>
     </div>
   )
 }

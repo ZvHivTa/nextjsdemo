@@ -70,9 +70,11 @@ export interface Course {
 export interface Student {
   id: number;
   name: string;
-  college: string;
-  major: string;
-  year: CourseYear | string; // 兼容字符串或特定枚举
+  collegeId: number | string;
+  subjectId: number | string;
+  collegeName: string;
+  subjectName: string;
+  grade: CourseYear | string; // 兼容字符串或特定枚举
 }
 // 学院
 export interface College {

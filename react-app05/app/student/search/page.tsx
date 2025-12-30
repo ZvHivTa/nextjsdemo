@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Search, ArrowUpDown, Loader2, Filter } from "lucide-react"
+import { Search, ArrowUpDown, Loader2, Filter, Clock, MapPin } from "lucide-react"
 import { toast } from "sonner"
 
 import { ColumnDef, PaginationState } from "@tanstack/react-table" 
@@ -26,7 +26,7 @@ import { ApiResponse, PaginatedResponse, Course, CourseType, CourseYear, College
 import { useAppContext } from "@/components/AppContext"
 import { CourseDataTable } from "@/components/app-dashborad/course-table"
 
-// 常量保持不变
+// 常量定义
 const COURSE_TYPE_OPTIONS: { value: CourseType, label: string }[] = [
   { value: 1, label: '通识选修课' },
   { value: 2, label: '专业必修课' },
@@ -71,6 +71,7 @@ export default function SearchPage() {
 
   // --- 2. 初始化数据获取 ---
 
+  // 获取学院列表
   const fetchColleges = useCallback(async () => {
     try {
       const res = await api.get<ApiResponse<College[]>>('/colleges');
@@ -88,7 +89,7 @@ export default function SearchPage() {
     }
   }, []);
 
-  // [核心] 获取课程数据
+  // 获取课程数据
   const fetchCourses = useCallback(async () => {
     setLoading(true);
     try {
@@ -134,6 +135,7 @@ export default function SearchPage() {
     }
   }, [searchQuery, selectedCollege, selectedType, selectedYear, pagination]); 
 
+  // 获取我的已选课程列表
   const fetchMyCourses = useCallback(async () => {
     try {
       const res = await api.get<ApiResponse<Course[]>>('/student/my_courses');
@@ -146,21 +148,15 @@ export default function SearchPage() {
     }
   }, []);
 
-  // [修正] 初始加载
+  // 初始加载
   useEffect(() => {
     fetchColleges();
     fetchMyCourses();
-    // 注意：删除了 fetchCourses() 的显式调用
-    // 因为下方的 useEffect[pagination] 会在组件挂载时（pagination初始赋值）自动执行一次
-    // 这样避免了 React 18 下的 Double Fetch 问题
-    
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
 
-  // [分页监听] 当页码或页大小改变时，自动触发查询
+  // 分页监听 当页码或页大小改变时，自动触发查询
   useEffect(() => {
      fetchCourses();
-     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination]);
 
   // 自动匹配年级逻辑
@@ -175,6 +171,7 @@ export default function SearchPage() {
 
   // --- 3. 交互处理器 ---
   
+  // 搜索按钮点击处理
   const handleSearchClick = () => {
     // 如果不在第一页，切回第一页（会触发 Effect 自动搜索）
     if (pagination.pageIndex !== 0) {
@@ -185,6 +182,7 @@ export default function SearchPage() {
     }
   };
 
+  // 选课处理
   const handleSelectCourse = async (course: Course) => {
     setProcessingId(course.id);
     try {
@@ -200,6 +198,7 @@ export default function SearchPage() {
     }
   };
 
+  // 退课处理
   const handleWithdrawCourse = async (course: Course) => {
     setProcessingId(course.id);
     try {
@@ -218,7 +217,7 @@ export default function SearchPage() {
     }
   };
 
-  // --- 4. 列定义 ---
+  // --- 4. 表格列定义 ---
   const columns = useMemo<ColumnDef<Course>[]>(() => [
       { 
         accessorKey: "name", 
@@ -242,8 +241,23 @@ export default function SearchPage() {
           return option ? option.label : val;
         }
       },
-      { accessorKey: "time", header: "时间", id: "time" },
-      { accessorKey: "place", header: "上课地点", id: "place" },
+       {
+        accessorKey: "time",
+        header: "时间 / 地点",
+        cell: ({ row }) => (
+          <div className="flex flex-col space-y-1 text-sm text-muted-foreground">
+            <div className="flex items-center">
+              <Clock className="mr-1 h-3 w-3" />
+              {row.original.time}
+            </div>
+            <div className="flex items-center">
+              <MapPin className="mr-1 h-3 w-3" />
+              {/* [修正] 字段名 location -> place */}
+              {row.original.place} 
+            </div>
+          </div>
+        )
+      },
       { 
         // [修正] 这里之前是 capactity，已修正为 capacity
         accessorKey: "capacity", 
@@ -299,7 +313,7 @@ export default function SearchPage() {
       }
   ], [myCourseIds, processingId]);
 
-  // 辅助函数 (保持不变)
+  // 映射当前类型标签
   const getCurrentTypeLabel = () => {
     if (selectedType === 'all') return '所有类型';
     return COURSE_TYPE_OPTIONS.find(o => o.value === selectedType)?.label || selectedType;

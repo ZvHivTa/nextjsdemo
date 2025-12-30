@@ -9,55 +9,85 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowUpDown, BookCheck } from "lucide-react"
+import { ArrowUpDown, BookCheck, Loader2, MapPin, Clock } from "lucide-react"
+import { toast } from "sonner"
 
-
-import { ColumnDef } from "@tanstack/react-table"
+import { ColumnDef, PaginationState } from "@tanstack/react-table"
 import { CourseDataTable } from "@/components/app-dashborad/course-table"
-import { Course } from "@/data/types"
+import { Course, ApiResponse, CourseType } from "@/types" // 确保引用正确的类型
+import { api } from "@/lib/api"
 
-
-// --- 模拟数据 ---
-// 这些是学生 *已经选上* 的课
-const MOCK_MY_COURSES: Course[] = [
-  { id: "C003", name: "数据结构", teacher: "刘博士", type: "专业必修课", time: "周三 5-6节", location: "教A-305", credits: 4.0 },
-  { id: "C005", name: "设计素描", teacher: "陈老师", type: "专业选修课", time: "周五 1-4节", location: "艺-202", credits: 2.0 },
+// 复用常量 (建议提取到单独的 constants 文件，这里先复制一份)
+const COURSE_TYPE_OPTIONS: { value: CourseType, label: string }[] = [
+  { value: 1, label: '通识选修课' },
+  { value: 2, label: '专业必修课' },
+  { value: 3, label: '专业选修课' },
+  { value: 4, label: '通识必修课' },
 ];
 
 export default function SelectedPage() {
   const [loading, setLoading] = useState(true);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
+  // [新增] 本地分页状态 (为了适配 CourseDataTable 组件)
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
+  // [新增] 前端切片逻辑
+  // 虽然我们一次性拿到了所有已选课程，但为了复用那个 Table 组件，我们在这里手动切一下数据
+  const currentPageData = useMemo(() => {
+    const start = pagination.pageIndex * pagination.pageSize;
+    const end = start + pagination.pageSize;
+    return courses.slice(start, end);
+  }, [courses, pagination]);
 
   // 获取已选课程
-  useEffect(() => {
+  const fetchMyCourses = useCallback(async () => {
     setLoading(true);
-    // 模拟 API: GET /api/student/my-courses
-    new Promise(res => setTimeout(res, 600)).then(() => {
-      setCourses(MOCK_MY_COURSES);
+    try {
+      const res = await api.get<ApiResponse<Course[]>>('/student/my_courses');
+      if (res.success) {
+        setCourses(res.data);
+      }
+    } catch (error) {
+      console.error("Fetch my courses failed", error);
+      toast.error("获取已选课程失败");
+    } finally {
       setLoading(false);
-    });
+    }
   }, []);
 
-  // 计算总学分
+  useEffect(() => {
+    fetchMyCourses();
+  }, [fetchMyCourses]);
+
+  // 计算总学分 (注意字段名修正为 credit)
   const totalCredits = useMemo(() => {
-    return courses.reduce((acc, curr) => acc + curr.credits, 0);
+    return courses.reduce((acc, curr) => acc + (curr.credit || 0), 0);
   }, [courses]);
 
   // 退选处理器
-  const handleWithdrawCourse = useCallback((course: Course) => {
-    if(confirm(`确定要退选《${course.name}》吗？`)) {
-        console.log(`退选: ${course.name}`);
+  const handleWithdrawCourse = useCallback(async (course: Course) => {
+    // 使用 sonner 的 promise 模式或标准 try-catch
+    setProcessingId(course.id);
+    try {
+        await api.post<ApiResponse<null>>('/student/withdraw', { courseId: course.id });
+        toast.success("退选成功", { description: `已退选《${course.name}》` });
+        
+        // 乐观更新：直接从列表中移除，不用重新请求接口，体验更好
         setCourses(prev => prev.filter(c => c.id !== course.id));
+    } catch (error: any) {
+        toast.error("退选失败", { description: error.message || "请稍后重试" });
+    } finally {
+        setProcessingId(null);
     }
   }, []);
 
   // 定义列
   const columns = useMemo<ColumnDef<Course>[]>(() => [
-    {
-      accessorKey: "id",
-      header: "课程id",
-      id: "课程id",
-    },
     {
       accessorKey: "name",
       header: ({ column }) => (
@@ -65,7 +95,7 @@ export default function SelectedPage() {
           课程名称 <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       ),
-      id: "课程名称",
+      id: "name",
       cell: ({ row }) => <div className="font-medium">{row.original.name}</div>
     },
     {
@@ -73,37 +103,54 @@ export default function SelectedPage() {
       header: "教师",
     },
     {
-      accessorKey: "credits",
+      accessorKey: "credit", // [修正] 字段名
       header: "学分",
     },
     {
       accessorKey: "type",
       header: "类型",
+      cell: ({ row }) => {
+        const val = row.original.type;
+        const option = COURSE_TYPE_OPTIONS.find(o => o.value === Number(val));
+        return option ? option.label : val;
+      }
     },
     {
       accessorKey: "time",
       header: "时间 / 地点",
       cell: ({ row }) => (
-        <div className="text-sm">
-          <div>{row.original.time}</div>
-          <div className="text-muted-foreground">{row.original.location}</div>
+        <div className="flex flex-col space-y-1 text-sm text-muted-foreground">
+          <div className="flex items-center">
+            <Clock className="mr-1 h-3 w-3" />
+            {row.original.time}
+          </div>
+          <div className="flex items-center">
+            <MapPin className="mr-1 h-3 w-3" />
+            {/* [修正] 字段名 location -> place */}
+            {row.original.place} 
+          </div>
         </div>
       )
     },
     {
       id: "actions",
       header: "操作",
-      cell: ({ row }) => (
-        <Button 
-            variant="destructive" // 使用红色按钮表示退选
-            size="sm" 
-            onClick={() => handleWithdrawCourse(row.original)}
-        >
-          退选
-        </Button>
-      )
+      cell: ({ row }) => {
+         const isProcessing = processingId === row.original.id;
+         return (
+            <Button 
+                variant="destructive" 
+                size="sm" 
+                disabled={isProcessing}
+                onClick={() => handleWithdrawCourse(row.original)}
+            >
+                {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                退选
+            </Button>
+         )
+      }
     }
-  ], [handleWithdrawCourse]);
+  ], [handleWithdrawCourse, processingId]);
 
   return (
     <div className="space-y-4">
@@ -138,7 +185,20 @@ export default function SelectedPage() {
             </CardDescription>
         </CardHeader>
         <CardContent>
-            <CourseDataTable columns={columns} data={courses} loading={loading} />
+            {/* [关键复用] 
+               这里我们复用之前的 CourseDataTable
+               虽然它是为服务端分页设计的，但我们把 rowCount 设为总长度，
+               data 设为当前页切片数据，就能完美适配了。
+            */}
+            <CourseDataTable 
+                columns={columns} 
+                data={currentPageData} 
+                loading={loading}
+                
+                rowCount={courses.length}
+                pagination={pagination}
+                onPaginationChange={setPagination}
+            />
         </CardContent>
         </Card>
     </div>
